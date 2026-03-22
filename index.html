@@ -407,11 +407,6 @@
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
         <span class="card-title" style="margin:0">Season standings</span>
-        <select id="lb-filter" onchange="renderLeaderboard()" style="height:34px;font-size:12px;border-radius:10px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text);padding:0 10px;font-family:'DM Sans',sans-serif">
-          <option value="all">All events</option>
-          
-          <option value="outing_18">Outings only</option>
-        </select>
       </div>
       <div class="pts-bar" id="pts-bar"></div>
       <div class="tbl-wrap" id="lb-table"><div class="empty">Loading…</div></div>
@@ -441,18 +436,16 @@
       <div class="form-row c3">
         <div class="form-group"><label>Date</label><input id="e-date" type="date" onchange="onEventDateChange()" /></div>
         <div class="form-group"><label>Type</label>
-          <select id="e-type" onchange="onEventTypeChange()">
-            
-            <option value="outing_18">Outing (18 holes)</option>
-          </select>
+          <input value="18-hole Outing" disabled style="height:38px;padding:0 11px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--bg);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif" />
+          <input type="hidden" id="e-type" value="outing_18" />
         </div>
         <div class="form-group"><label>Course name</label><input id="e-course" placeholder="e.g. Portmarnock" /></div>
       </div>
       <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Men's index</div>
       <div class="form-row c3">
-        <div class="form-group"><label>Course rating</label><input id="e-cr" type="number" step="0.1" value="35.0" /></div>
+        <div class="form-group"><label>Course rating</label><input id="e-cr" type="number" step="0.1" value="70.0" /></div>
         <div class="form-group"><label>Slope rating</label><input id="e-slope" type="number" value="113" /></div>
-        <div class="form-group"><label>Par</label><input id="e-par" type="number" value="36" /></div>
+        <div class="form-group"><label>Par</label><input id="e-par" type="number" value="72" /></div>
       </div>
       <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:4px">Women's index</div>
       <div class="form-row c3">
@@ -647,12 +640,12 @@ function calcHolePts(r, holeIndex) {
     const ev = db.events.find(e=>e.id===r.event_id);
     const pl = db.players.find(x=>x.id===r.player_id);
     if (!ev) return 0;
-    const n = ev.event_type==='outing_18' ? 18 : 9;
+    const n = 18;
     const siVals  = getSIValues(n, ev, pl);
     const parVals = getParValues(n, ev, pl);
     const { cr, slope, par } = getCourseIndexForPlayer(pl, ev);
     let courseHcp = calcCourseHcp(parseFloat(r.handicap_before)||0, slope, cr, par);
-    if (ev.event_type==='outing_18') courseHcp *= 2;
+    
     const score = r.hole_scores[holeIndex];
     if (score == null) return 0;
     return calcStableford(score, parVals[holeIndex], getStrokeAllowance(courseHcp, siVals[holeIndex], n));
@@ -662,7 +655,7 @@ function calcHolePts(r, holeIndex) {
 function tiebreakerCompare(a, b) {
   const ev = db.events.find(e=>e.id===a.event_id);
   if (!ev) return 0;
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
 
   // Step 1: total of last 3 holes
   let aLast=0, bLast=0;
@@ -713,9 +706,7 @@ async function loadAll() {
 }
 
 function renderLeaderboard() {
-  const filter = document.getElementById('lb-filter').value;
-  const evs = filter === 'all' ? db.events : db.events.filter(e=>e.event_type===filter);
-  const eids = new Set(evs.map(e=>e.id));
+  const eids = new Set(db.events.map(e=>e.id));
   const filteredRounds = db.rounds.filter(r=>eids.has(r.event_id));
 
   const byEvent = {};
@@ -827,7 +818,7 @@ function renderEvents() {
       const count = db.rounds.filter(r=>r.event_id===e.id).length;
       return `<tr>
         <td>${fmtDate(e.event_date)}</td>
-        <td><span class="badge ${e.event_type==='outing_18'?'purple':'blue'}">${e.event_type==='outing_18'?'18-hole outing':'Sunday 9'}</span></td>
+        <td><span class="badge ${'purple'}">${'18-hole Outing'}</span></td>
         <td>${e.course_name}</td>
         <td>${e.par}${e.womens_par?` / ${e.womens_par}W`:''}</td>
         <td>${count}</td>
@@ -853,7 +844,7 @@ function renderAddRound() {
     rp.disabled = false;
     rp.innerHTML = '<option value="">Select player…</option>' + db.players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   }
-  re.innerHTML = '<option value="">Select event…</option>' + [...db.events].reverse().map(e=>`<option value="${e.id}">${fmtDate(e.event_date)} — ${e.course_name} (${e.event_type==='outing_18'?'18h':'9h'})</option>`).join('');
+  re.innerHTML = '<option value="">Select event…</option>' + [...db.events].reverse().map(e=>`<option value="${e.id}">${fmtDate(e.event_date)} — ${e.course_name} (18h)</option>`).join('');
   buildHoleInputs(9);
 }
 
@@ -901,23 +892,19 @@ function buildEventSIInputs(n) {
 }
 
 function onEventTypeChange() {
-  const t = document.getElementById('e-type').value;
-  const n = t==='outing_18' ? 18 : 9;
-  document.getElementById('e-cr').value  = t==='outing_18' ? '70.0' : '35.0';
-  document.getElementById('e-par').value = t==='outing_18' ? '72'   : '36';
-  buildEventSIInputs(n);
+  document.getElementById('e-cr').value  = '70.0';
+  document.getElementById('e-par').value = '72';
+  buildEventSIInputs(18);
 }
 
 function onEventDateChange() {
-  const t = document.getElementById('e-type').value;
-  const n = t==='outing_18' ? 18 : 9;
-  buildEventSIInputs(n);
+  buildEventSIInputs(18);
 }
 
 function onEventSelect() {
   const eid = document.getElementById('r-event').value;
   const ev  = db.events.find(e=>e.id===eid);
-  const n   = ev ? (ev.event_type==='outing_18' ? 18 : 9) : 9;
+  const n   = ev ? (18) : 9;
   if (ev) buildHoleInputs(n);
   const siDisplay  = document.getElementById('event-si-display');
   const siReadout  = document.getElementById('event-si-readout');
@@ -971,7 +958,7 @@ function getCourseIndexForPlayer(player, ev) {
   if (isWomens && ev.womens_course_rating && ev.womens_slope_rating && ev.womens_par) {
     return { cr: parseFloat(ev.womens_course_rating), slope: parseInt(ev.womens_slope_rating), par: parseInt(ev.womens_par) };
   }
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
   return { cr: parseFloat(ev.course_rating)||35, slope: parseInt(ev.slope_rating)||113, par: parseInt(ev.par)||(n===9?36:72) };
 }
 
@@ -991,12 +978,12 @@ function updateRoundSummary() {
   const ev  = db.events.find(e=>e.id===eid);
   const sb  = document.getElementById('round-summary');
   if (!eid || !pid || !ev) { sb.classList.remove('show'); return; }
-  const n   = ev.event_type==='outing_18' ? 18 : 9;
+  const n   = 18;
   const p   = db.players.find(x=>x.id===pid);
   const hcp = p ? parseFloat(p.handicap_index) : 18;
   const { cr, slope, par } = getCourseIndexForPlayer(p, ev);
   let courseHcp = calcCourseHcp(hcp, slope, cr, par);
-  if (ev.event_type === 'outing_18') courseHcp = courseHcp * 2;
+  
   const indexLabel = p && p.plays_womens_index ? ' (W)' : ' (M)';
   const siVals  = getSIValues(n, ev, p || null);
   const parVals = getParValues(n, ev, p || null);
@@ -1015,7 +1002,7 @@ function updateRoundSummary() {
       : pos <= 3
         ? ` · Hcp: ${hcp} (top 3 — no change)`
         : ` · Hcp: ${hcp} → ${newH} (+0.2)`;
-    const outingNote = ev.event_type==='outing_18' ? ` · Course hcp doubled (${courseHcp})${indexLabel}` : ` · Course hcp: ${courseHcp}${indexLabel}`;
+    const outingNote = ` · Course hcp doubled (${courseHcp})${indexLabel}`;
     sb.textContent = `${holes} holes · ${pts} stableford pts${outingNote}${hcpNote}`;
     sb.classList.add('show');
   } else { sb.classList.remove('show'); }
@@ -1030,7 +1017,7 @@ async function saveRound() {
   if (!ev) { toast('Event not found in database', 'error'); return; }
   const pl = db.players.find(x=>x.id===pid);
   if (!pl) { toast('Player not found in database', 'error'); return; }
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
   const scores = [];
   for (let i=1; i<=n; i++) {
     const el = document.getElementById('h'+i);
@@ -1045,7 +1032,7 @@ async function saveRound() {
   const hcpIdx = parseFloat(pl.handicap_index) || 18;
   const { cr, slope, par } = getCourseIndexForPlayer(pl, ev);
   let courseHcp = calcCourseHcp(hcpIdx, slope, cr, par);
-  if (ev.event_type === 'outing_18') courseHcp = courseHcp * 2;
+  
   const siVals = getSIValues(n, ev, pl);
   let totalPts=0;
   for (let i=0; i<n; i++) {
@@ -1101,11 +1088,11 @@ async function addEvent() {
   const course = document.getElementById('e-course').value.trim();
   const cr     = parseFloat(document.getElementById('e-cr').value) || 35;
   const slope  = parseInt(document.getElementById('e-slope').value) || 113;
-  const par    = parseInt(document.getElementById('e-par').value) || (type==='outing_18'?72:36);
+  const par    = parseInt(document.getElementById('e-par').value) || (72);
   const wcr    = parseFloat(document.getElementById('e-wcr').value) || null;
   const wslope = parseInt(document.getElementById('e-wslope').value) || null;
   const wpar   = parseInt(document.getElementById('e-wpar').value) || null;
-  const n      = type==='outing_18' ? 18 : 9;
+  const n      = 18;
   if (!date || !course) { toast('Enter date and course name', 'error'); return; }
   if (db.events.find(e=>e.event_date===date)) { toast('An event already exists on this date', 'error'); return; }
   const siVals = [], wsiVals = [], parVals = [], wparVals = [];
@@ -1141,7 +1128,7 @@ async function addEvent() {
 function editEvent(eid) {
   const ev = db.events.find(e=>e.id===eid);
   if (!ev) return;
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
   const si   = ev.stroke_index   || Array.from({length:n},(_,i)=>i+1);
   const wsi  = ev.womens_stroke_index || si;
   const pars = ev.par_values     || Array.from({length:n},()=>4);
@@ -1195,7 +1182,7 @@ function editEvent(eid) {
 async function saveEditedEvent(eid) {
   const ev = db.events.find(e=>e.id===eid);
   if (!ev) return;
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
   const name  = document.getElementById('ee-name').value.trim();
   const date  = document.getElementById('ee-date').value;
   const par   = parseInt(document.getElementById('ee-par').value) || ev.par;
@@ -1409,7 +1396,7 @@ function renderHome() {
           <div style="font-family:'DM Serif Display',serif;font-size:17px">${ev ? ev.course_name : 'Event'}</div>
           <div style="font-size:12px;color:var(--text-3)">${ev ? fmtDate(ev.event_date) : ''}</div>
         </div>
-        <span class="badge ${ev&&ev.event_type==='outing_18'?'purple':'green'}">${ev&&ev.event_type==='outing_18'?'Outing':'Sunday 9'}</span>
+        <span class="badge ${ev&&'purple'}">${ev&&'Outing'}</span>
       </div>
       ${ranked.length ? `<div style="margin-bottom:4px">${podium}</div>` : ''}
       ${ctp}${birdies}${custom}
@@ -1563,7 +1550,7 @@ function editRound(rid) {
   const ev = db.events.find(e=>e.id===r.event_id);
   const p = db.players.find(x=>x.id===r.player_id);
   if (!r || !ev) return;
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
   const parVals = getParValues(n, ev, p || null);
   const siVals = getSIValues(n, ev, p || null);
   document.getElementById('modal-title').textContent = `Edit round — ${p?p.name:'?'} · ${ev.course_name}`;
@@ -1594,7 +1581,7 @@ async function saveEditedRound(rid) {
   const ev = db.events.find(e=>e.id===r.event_id);
   const pl = db.players.find(x=>x.id===r.player_id);
   if (!r||!ev||!pl) return;
-  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const n = 18;
   const scores = [];
   for (let i=1;i<=n;i++) {
     const v = parseInt(document.getElementById('er-h'+i)?.value);
@@ -1606,7 +1593,7 @@ async function saveEditedRound(rid) {
   const hcpIdx = parseFloat(r.handicap_before);
   const { cr, slope, par } = getCourseIndexForPlayer(pl, ev);
   let courseHcp = calcCourseHcp(hcpIdx, slope, cr, par);
-  if (ev.event_type==='outing_18') courseHcp = courseHcp * 2;
+  courseHcp = courseHcp * 2;
   let totalPts=0;
   for (let i=0;i<n;i++) {
     if (scores[i]!==null) totalPts += calcStableford(scores[i], parVals[i], getStrokeAllowance(courseHcp, siVals[i], n));
@@ -1942,7 +1929,7 @@ async function init() {
   }
 }
 
-buildEventSIInputs(9);
+buildEventSIInputs(18);
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/OLoughlinsGolfSociety/sw.js', { scope: '/OLoughlinsGolfSociety/' }).catch(()=>{});
