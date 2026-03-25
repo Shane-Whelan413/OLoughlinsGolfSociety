@@ -494,14 +494,13 @@
       <div class="stat"><div class="stat-label">Members</div><div class="stat-value" id="s-members">—</div></div>
       <div class="stat"><div class="stat-label">Events played</div><div class="stat-value" id="s-events">—</div></div>
       <div class="stat"><div class="stat-label">Rounds logged</div><div class="stat-value" id="s-rounds">—</div></div>
-      <div class="stat"><div class="stat-label">Sundays left</div><div class="stat-value" id="s-remaining">—</div></div>
+      <div class="stat"><div class="stat-label">Outings left</div><div class="stat-value" id="s-remaining">—</div></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
         <span class="card-title" style="margin:0">Season standings</span>
         <select id="lb-filter" onchange="renderLeaderboard()" style="height:34px;font-size:12px;border-radius:10px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text);padding:0 10px;font-family:'DM Sans',sans-serif">
           <option value="all">All events</option>
-          <option value="sunday_9">Sundays only</option>
           <option value="outing_18">Outings only</option>
         </select>
       </div>
@@ -544,7 +543,6 @@
         <div class="form-group"><label>Date</label><input id="e-date" type="date" onchange="onEventDateChange()" /></div>
         <div class="form-group"><label>Type</label>
           <select id="e-type" onchange="onEventTypeChange()">
-            <option value="sunday_9">Sunday (9 holes)</option>
             <option value="outing_18">Outing (18 holes)</option>
           </select>
         </div>
@@ -719,39 +717,11 @@ const OUTINGS = {
 };
 
 function getSeasonDates() {
-  const satOutings = {}, sunOutings = {};
-  for (const [d, name] of Object.entries(OUTINGS)) {
-    const dt = new Date(...d.split('-').map((v,i)=>i===1?v-1:+v));
-    if (dt.getDay() === 6) satOutings[d] = name;
-    else sunOutings[d] = name;
-  }
-  const skipSundays = new Set(
-    Object.keys(satOutings).map(d => {
-      const dt = new Date(...d.split('-').map((v,i)=>i===1?v-1:+v));
-      dt.setDate(dt.getDate()+1);
-      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-    })
-  );
   const dates = [];
-  let y=2026, m=3, day=22;
-  const end = new Date(2026,10,29);
-  while (true) {
-    const dt = new Date(y, m-1, day);
-    if (dt > end) break;
-    const iso = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    if (skipSundays.has(iso)) {
-      const sat = new Date(y,m-1,day-1);
-      const satIso = `${sat.getFullYear()}-${String(sat.getMonth()+1).padStart(2,'0')}-${String(sat.getDate()).padStart(2,'0')}`;
-      dates.push({ date: satIso, isOuting: true, course: satOutings[satIso] });
-    } else if (sunOutings[iso]) {
-      dates.push({ date: iso, isOuting: true, course: sunOutings[iso] });
-    } else {
-      dates.push({ date: iso, isOuting: false, course: null });
-    }
-    day += 7;
-    const next = new Date(y, m-1, day);
-    y = next.getFullYear(); m = next.getMonth()+1; day = next.getDate();
+  for (const [d, name] of Object.entries(OUTINGS)) {
+    dates.push({ date: d, isOuting: true, course: name });
   }
+  dates.sort((a,b) => a.date.localeCompare(b.date));
   return dates;
 }
 
@@ -891,12 +861,12 @@ function renderLeaderboard() {
     };
   }).sort((a,b) => b.lp - a.lp);
 
-  const sundays = getSundays();
-  const eventsPlayed = db.events.length;
+  const outingsTotal = getSeasonDates().length;
+  const eventsPlayed = db.events.filter(e=>e.event_type==='outing_18').length;
   document.getElementById('s-members').textContent   = db.players.length;
   document.getElementById('s-events').textContent    = eventsPlayed;
   document.getElementById('s-rounds').textContent    = db.rounds.length;
-  document.getElementById('s-remaining').textContent = Math.max(0, sundays.length - eventsPlayed);
+  document.getElementById('s-remaining').textContent = Math.max(0, outingsTotal - eventsPlayed);
 
   document.getElementById('pts-bar').innerHTML =
     [20,19,18,17,16,15,14,13,12,11,10,9,8,7,6].map((p,i)=>
@@ -968,8 +938,8 @@ function renderEvents() {
     const count = db.rounds.filter(r=>r.event_id===e.id).length;
     const verified = db.rounds.filter(r=>r.event_id===e.id && r.verified).length;
     const isOuting = e.event_type==='outing_18';
-    const badgeClass = isOuting ? 'purple' : 'blue';
-    const typeLabel = isOuting ? '18-hole outing' : 'Sunday 9';
+    const badgeClass = 'purple';
+    const typeLabel = '18-hole outing';
     const parLabel = e.par + (e.womens_par ? ` / ${e.womens_par}W` : '');
     const pubBadge = e.published
       ? `<span class="badge green" style="font-size:10px">✓ Published</span>`
@@ -1083,7 +1053,7 @@ function loadSavedCourse() {
   const n = c.si ? c.si.length : 9;
   // Set type first to build correct number of holes
   const typeEl = document.getElementById('e-type');
-  typeEl.value = n === 18 ? 'outing_18' : 'sunday_9';
+  typeEl.value = 'outing_18';
   buildEventSIInputs(n);
   document.getElementById('e-course').value  = c.name;
   document.getElementById('e-cr').value      = c.cr || '';
@@ -1574,12 +1544,10 @@ function renderSchedule() {
   db.events.forEach(e=>{ byDate[e.event_date]=e; });
   const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   const outingsLogged = db.events.filter(e=>e.event_type==='outing_18').length;
-  const sundaysLogged = db.events.filter(e=>e.event_type==='sunday_9').length;
   document.getElementById('schedule-table').innerHTML = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem">
-      <span class="badge gray">${seasonDates.length} events in season</span>
-      <span class="badge green">${sundaysLogged} Sundays logged</span>
-      <span class="badge purple">${outingsLogged} / 7 outings logged</span>
+      <span class="badge gray">${seasonDates.length} outings in season</span>
+      <span class="badge purple">${outingsLogged} / ${seasonDates.length} outings logged</span>
     </div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Status</th><th>Course</th><th></th></tr></thead>
@@ -1588,33 +1556,22 @@ function renderSchedule() {
         const ev     = byDate[d];
         const isPast = d < today;
         const isTdy  = d === today;
-        let typeLabel, status, courseName;
+        let status, courseName;
+        const typeLabel = '<span class="badge purple">18-hole outing</span>';
         if (ev) {
-          typeLabel  = ev.event_type==='outing_18'
-            ? '<span class="badge purple">18-hole outing</span>'
-            : '<span class="badge blue">Sunday 9</span>';
           status     = isTdy
             ? '<span class="badge gold">Today</span>'
             : isPast
-              ? `<span class="badge ${ev.event_type==='outing_18'?'purple':'green'}">Played</span>`
+              ? '<span class="badge purple">Played</span>'
               : '<span class="badge gray">Upcoming</span>';
           courseName = ev.course_name;
-        } else if (isOuting) {
-          typeLabel  = '<span class="badge purple">18-hole outing</span>';
-          status     = isTdy
-            ? '<span class="badge gold">Today</span>'
-            : isPast
-              ? '<span class="badge gray">Not logged</span>'
-              : '<span class="badge gray">Upcoming</span>';
-          courseName = outingCourse;
         } else {
-          typeLabel  = '<span class="badge blue">Sunday 9</span>';
           status     = isTdy
             ? '<span class="badge gold">Today</span>'
             : isPast
               ? '<span class="badge gray">Not logged</span>'
               : '<span class="badge gray">Upcoming</span>';
-          courseName = '—';
+          courseName = outingCourse || '—';
         }
         return `<tr>
           <td style="color:var(--text-3);font-size:12px">${i+1}</td>
@@ -1667,7 +1624,7 @@ function renderHome() {
           <div style="font-family:'DM Serif Display',serif;font-size:17px">${ev ? ev.course_name : 'Event'}</div>
           <div style="font-size:12px;color:var(--text-3)">${ev ? fmtDate(ev.event_date) : ''}</div>
         </div>
-        <span class="badge ${ev&&ev.event_type==='outing_18'?'purple':'green'}">${ev&&ev.event_type==='outing_18'?'Outing':'Sunday 9'}</span>
+        <span class="badge purple">Outing</span>
       </div>
       ${ranked.length ? `<div style="margin-bottom:4px">${podium}</div>` : ''}
       ${ctp}${birdies}${custom}
