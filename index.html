@@ -556,33 +556,23 @@
         </div>
         <div class="form-group"><label>Course name</label><input id="e-course" placeholder="e.g. Portmarnock" /></div>
       </div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Men's index</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Course index</div>
       <div class="form-row c3">
         <div class="form-group"><label>Course rating</label><input id="e-cr" type="number" step="0.1" value="35.0" /></div>
         <div class="form-group"><label>Slope rating</label><input id="e-slope" type="number" value="113" /></div>
         <div class="form-group"><label>Par</label><input id="e-par" type="number" value="36" /></div>
       </div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:4px">Women's index</div>
-      <div class="form-row c3">
-        <div class="form-group"><label>Course rating</label><input id="e-wcr" type="number" step="0.1" placeholder="e.g. 36.5" /></div>
-        <div class="form-group"><label>Slope rating</label><input id="e-wslope" type="number" placeholder="e.g. 120" /></div>
-        <div class="form-group"><label>Par</label><input id="e-wpar" type="number" placeholder="e.g. 36" /></div>
-      </div>
-      <div class="hole-section-label" id="e-par-title">Men's par per hole <span style="font-weight:400;text-transform:none;letter-spacing:0">— enter 3, 4 or 5 for each hole</span></div>
+
+      <div class="hole-section-label" id="e-par-title">Par per hole <span style="font-weight:400;text-transform:none;letter-spacing:0">— enter 3, 4 or 5 for each hole</span></div>
       <div class="hole-grid" id="e-par-labels"></div>
       <div class="hole-grid" id="e-par-inputs"></div>
-      <div class="hole-section-label" id="e-wpar-h-title">Women's par per hole <span style="font-weight:400;text-transform:none;letter-spacing:0">— leave blank if same as men's</span></div>
-      <div class="hole-grid" id="e-wpar-h-labels"></div>
-      <div class="hole-grid" id="e-wpar-h-inputs"></div>
-      <div class="hole-section-label" id="e-si-title">Men's stroke index <span style="font-weight:400;text-transform:none;letter-spacing:0">— enter 1 to 9 from scorecard (1 = hardest)</span></div>
+
+      <div class="hole-section-label" id="e-si-title">Stroke index <span style="font-weight:400;text-transform:none;letter-spacing:0">— enter 1 to 18 from scorecard (1 = hardest)</span></div>
       <div class="hole-grid" id="e-si-labels"></div>
       <div class="hole-grid" id="e-si-inputs"></div>
-      <div class="hole-section-label" id="e-wsi-title">Women's stroke index <span style="font-weight:400;text-transform:none;letter-spacing:0">— leave blank if same as men's</span></div>
-      <div class="hole-grid" id="e-wsi-labels"></div>
-      <div class="hole-grid" id="e-wsi-inputs"></div>
+
       <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" id="btn-add-event" onclick="addEvent()">Create event</button>
-        <button class="btn" onclick="saveCourse()" style="background:#EEEDFE;color:#3C3489;border-color:#AFA9EC">Save this course</button>
       </div>
     </div>
     <div class="card">
@@ -924,7 +914,7 @@ function renderPlayers() {
         <div class="avatar" style="width:42px;height:42px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-          ${p.plays_womens_index ? `<span class="badge purple" style="font-size:10px">Women's index</span>` : `<span style="font-size:12px;color:var(--text-3)">Member</span>`}
+          <span style="font-size:12px;color:var(--text-3)">Member</span>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:22px;font-weight:700;color:var(--green-mid);line-height:1">${lp}</div>
@@ -948,7 +938,7 @@ function renderPlayers() {
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn sm" onclick="viewPlayerRounds('${p.id}','${p.name.replace(/'/g,"\\'")}')">View rounds</button>
         ${isAdmin ? `<button class="btn sm" onclick="editHandicap('${p.id}','${p.name.replace(/'/g,"\\'")}',${ p.handicap_index})">Edit hcp</button>` : ''}
-        ${isAdmin ? `<button class="btn sm" style="background:#EEEDFE;color:#3C3489;border-color:#AFA9EC" onclick="toggleWomensIndex('${p.id}',${!!p.plays_womens_index})">${p.plays_womens_index?'Men\'s':'Women\'s'} index</button>` : ''}
+
         ${isAdmin ? `<button class="btn sm" onclick="adminResetPin('${p.id}','${p.name.replace(/'/g,"\\'")}')">Reset PIN</button>` : ''}
         ${isAdmin ? `<button class="btn sm danger" onclick="deletePlayer('${p.id}','${p.name.replace(/'/g,"\\'")}')">Remove</button>` : ''}
       </div>
@@ -1539,7 +1529,7 @@ function editEvent(eid) {
       <div class="form-group"><label>Slope</label><input type="number" id="ee-slope" value="${ev.slope_rating}" /></div>
       <div class="form-group"><label>Par</label><input type="number" id="ee-mpar" value="${ev.par}" /></div>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Women's index</div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="form-group"><label>Course rating</label><input type="number" step="0.1" id="ee-wcr" value="${ev.womens_course_rating||''}" placeholder="optional" /></div>
       <div class="form-group"><label>Slope</label><input type="number" id="ee-wslope" value="${ev.womens_slope_rating||''}" placeholder="optional" /></div>
