@@ -1016,22 +1016,20 @@ function buildEventSIInputs(n) {
   const wparLbl  = document.getElementById('e-wpar-h-labels');
   const wparInp  = document.getElementById('e-wpar-h-inputs');
   const siTitle  = document.getElementById('e-si-title');
-  const wsiTitle = document.getElementById('e-wsi-title');
+
   siLbl.innerHTML=''; siInp.innerHTML='';
-  wsiLbl.innerHTML=''; wsiInp.innerHTML='';
+
   parLbl.innerHTML=''; parInp.innerHTML='';
-  wparLbl.innerHTML=''; wparInp.innerHTML='';
+
   siTitle.querySelector('span').textContent  = `— enter 1 to ${n} from scorecard (1 = hardest)`;
-  wsiTitle.querySelector('span').textContent = `— leave blank if same as men's`;
+
   for (let i=1; i<=n; i++) {
     const lsi = document.createElement('div'); lsi.className='hole-lbl'; lsi.textContent=i; siLbl.appendChild(lsi);
     const si  = document.createElement('input'); si.type='number'; si.min=1; si.max=n; si.id='e-si'+i; si.placeholder=i; siInp.appendChild(si);
-    const lwsi = document.createElement('div'); lwsi.className='hole-lbl'; lwsi.textContent=i; wsiLbl.appendChild(lwsi);
-    const wsi  = document.createElement('input'); wsi.type='number'; wsi.min=1; wsi.max=n; wsi.id='e-wsi'+i; wsi.placeholder=i; wsiInp.appendChild(wsi);
+
     const lpar = document.createElement('div'); lpar.className='hole-lbl'; lpar.textContent=i; parLbl.appendChild(lpar);
     const par  = document.createElement('input'); par.type='number'; par.min=3; par.max=5; par.id='e-par-h'+i; par.placeholder='4'; parInp.appendChild(par);
-    const lwpar = document.createElement('div'); lwpar.className='hole-lbl'; lwpar.textContent=i; wparLbl.appendChild(lwpar);
-    const wpar  = document.createElement('input'); wpar.type='number'; wpar.min=3; wpar.max=5; wpar.id='e-wpar-h'+i; wpar.placeholder='4'; wparInp.appendChild(wpar);
+
   }
 }
 
@@ -1232,7 +1230,7 @@ function saveCourse() {
     pars.push(parseInt(document.getElementById('e-par-h'+i)?.value) || 4);
     wpars.push(parseInt(document.getElementById('e-wpar-h'+i)?.value) || pars[i-1]);
     si.push(parseInt(document.getElementById('e-si'+i)?.value) || i);
-    wsi.push(parseInt(document.getElementById('e-wsi'+i)?.value) || si[i-1]);
+
   }
   const course = {
     name,
@@ -1487,16 +1485,14 @@ async function addEvent() {
   }
   const btn = document.getElementById('btn-add-event'); btn.disabled=true;
   try {
-    await post('events',{ event_date:date, event_type:type, course_name:course, course_rating:cr, slope_rating:slope, par, womens_course_rating:wcr, womens_slope_rating:wslope, womens_par:wpar, stroke_index:siVals, womens_stroke_index:wsiVals, par_values:parVals, womens_par_values:wparVals });
+    await post('events',{ event_date:date, event_type:type, course_name:course, course_rating:cr, slope_rating:slope, par, stroke_index:siVals, par_values:parVals });
     document.getElementById('e-course').value='';
-    document.getElementById('e-wcr').value='';
-    document.getElementById('e-wslope').value='';
-    document.getElementById('e-wpar').value='';
+
     for (let i=1; i<=n; i++) {
       const es=document.getElementById('e-si'+i); if(es) es.value='';
-      const ews=document.getElementById('e-wsi'+i); if(ews) ews.value='';
+
       const ep=document.getElementById('e-par-h'+i); if(ep) ep.value='';
-      const ewp=document.getElementById('e-wpar-h'+i); if(ewp) ewp.value='';
+
     }
     toast('Event created!', 'success');
     await loadAll(); renderAll();
@@ -1529,30 +1525,17 @@ function editEvent(eid) {
       <div class="form-group"><label>Date</label><input type="date" id="ee-date" value="${ev.event_date}" /></div>
       <div class="form-group"><label>Par total</label><input type="number" id="ee-par" value="${ev.par}" /></div>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Men's index</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="form-group"><label>Course rating</label><input type="number" step="0.1" id="ee-cr" value="${ev.course_rating}" /></div>
       <div class="form-group"><label>Slope</label><input type="number" id="ee-slope" value="${ev.slope_rating}" /></div>
       <div class="form-group"><label>Par</label><input type="number" id="ee-mpar" value="${ev.par}" /></div>
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-      <div class="form-group"><label>Course rating</label><input type="number" step="0.1" id="ee-wcr" value="${ev.womens_course_rating||''}" placeholder="optional" /></div>
-      <div class="form-group"><label>Slope</label><input type="number" id="ee-wslope" value="${ev.womens_slope_rating||''}" placeholder="optional" /></div>
-      <div class="form-group"><label>Par</label><input type="number" id="ee-wpar" value="${ev.womens_par||''}" placeholder="optional" /></div>
-    </div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Men's par per hole</div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Par per hole</div>
     <div style="${grid}">${holeLabels}</div>
     <div style="${grid};margin-bottom:10px">${holeRow('ee-ph', pars, '4')}</div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Women's par per hole</div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Stroke index</div>
     <div style="${grid}">${holeLabels}</div>
-    <div style="${grid};margin-bottom:10px">${holeRow('ee-wph', wpars, '4')}</div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Men's stroke index</div>
-    <div style="${grid}">${holeLabels}</div>
-    <div style="${grid};margin-bottom:10px">${holeRow('ee-si', si, String(n))}</div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Women's stroke index</div>
-    <div style="${grid}">${holeLabels}</div>
-    <div style="${grid};margin-bottom:14px">${holeRow('ee-wsi', wsi, String(n))}</div>
+    <div style="${grid};margin-bottom:14px">${holeRow('ee-si', si, String(n))}</div>
     <button class="btn primary" onclick="saveEditedEvent('${eid}')" style="width:100%">Save changes</button>
   `;
   document.getElementById('modal-overlay').classList.add('open');
@@ -1567,24 +1550,17 @@ async function saveEditedEvent(eid) {
   const par   = parseInt(document.getElementById('ee-par').value) || ev.par;
   const cr    = parseFloat(document.getElementById('ee-cr').value) || ev.course_rating;
   const slope = parseInt(document.getElementById('ee-slope').value) || ev.slope_rating;
-  const wcr   = parseFloat(document.getElementById('ee-wcr').value) || null;
-  const wslope= parseInt(document.getElementById('ee-wslope').value) || null;
-  const wpar  = parseInt(document.getElementById('ee-wpar').value) || null;
   if (!name || !date) { toast('Course name and date are required', 'error'); return; }
-  const siVals=[], wsiVals=[], parVals=[], wparVals=[];
+  const siVals=[], parVals=[];
   for (let i=1; i<=n; i++) {
-    const sv  = parseInt(document.getElementById('ee-si'+i)?.value);  siVals.push(isNaN(sv)?i:sv);
-    const wsv = parseInt(document.getElementById('ee-wsi'+i)?.value); wsiVals.push(isNaN(wsv)?siVals[i-1]:wsv);
-    const pv  = parseInt(document.getElementById('ee-ph'+i)?.value);  parVals.push(isNaN(pv)?4:pv);
-    const wpv = parseInt(document.getElementById('ee-wph'+i)?.value); wparVals.push(isNaN(wpv)?parVals[i-1]:wpv);
+    const sv = parseInt(document.getElementById('ee-si'+i)?.value); siVals.push(isNaN(sv)?i:sv);
+    const pv = parseInt(document.getElementById('ee-ph'+i)?.value); parVals.push(isNaN(pv)?4:pv);
   }
   try {
     await patch(`events?id=eq.${eid}`, {
       course_name:name, event_date:date, par,
       course_rating:cr, slope_rating:slope,
-      womens_course_rating:wcr, womens_slope_rating:wslope, womens_par:wpar,
-      stroke_index:siVals, womens_stroke_index:wsiVals,
-      par_values:parVals, womens_par_values:wparVals
+      stroke_index:siVals, par_values:parVals
     });
     toast('Event updated!', 'success');
     closeModal();
@@ -1860,14 +1836,6 @@ async function adminResetPin(pid, name) {
   } catch(e) { toast('Error: '+e.message, 'error'); }
 }
 
-async function toggleWomensIndex(pid, currentVal) {
-  try {
-    await patch(`players?id=eq.${pid}`, { plays_womens_index: !currentVal });
-    const p = db.players.find(x=>x.id===pid);
-    toast(`${p?p.name:'Player'} set to ${!currentVal?"women's":"men's"} index`, 'success');
-    await loadAll(); renderAll();
-  } catch(e) { toast('Error: '+e.message, 'error'); }
-}
 
 function showPlayerProfile(pid) {
   const player = db.players.find(p=>p.id===pid);
