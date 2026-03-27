@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0a2814">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,6 +36,8 @@
     --radius-xl: 20px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { touch-action: manipulation; }
+  button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   html { min-height: 100vh; }
   body {
     font-family: 'DM Sans', sans-serif;
@@ -210,6 +212,8 @@
     border: 1px solid var(--border-strong);
     background: transparent;
     color: var(--text);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   .btn:hover { background: var(--bg); }
   .btn:active { transform: scale(0.98); }
@@ -1048,7 +1052,7 @@ function buildHoleInputs(n) {
   // Reset scores
   for (let i=1;i<=n;i++) _holeScores[i] = null;
 
-  const btnStyle = 'width:48px;height:48px;border-radius:10px;border:1px solid var(--border-strong);background:var(--bg-2);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;flex-shrink:0;display:flex;align-items:center;justify-content:center';
+  const btnStyle = 'width:48px;height:48px;border-radius:10px;border:1px solid var(--border-strong);background:var(--bg-2);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center';
 
   function makeCard(startH, endH, label) {
     const holes = Array.from({length: endH-startH+1}, (_,i)=>startH+i);
