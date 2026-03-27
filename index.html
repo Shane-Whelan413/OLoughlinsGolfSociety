@@ -2478,6 +2478,7 @@ function updateUIForRole() {
       ? tabs
       : ['home','leaderboard','profile','schedule'];
   document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+    if (btn.id === 'nav-events-btn') return; // handled separately
     btn.style.display = visibleTabs.includes(tabs[i]) ? '' : 'none';
   });
   const eventsNavBtn = document.getElementById('nav-events-btn');
