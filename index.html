@@ -607,7 +607,7 @@
             </div>
           </div>
         </div>
-        <div class="hole-scroll-wrap" id="hole-inputs"></div>
+        <div id="hole-inputs"></div>
       </div>
       <div id="duplicate-warning" style="display:none;background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">⚠️</span>
@@ -1031,6 +1031,8 @@ function checkDuplicateRound() {
   }
 }
 
+const _holeScores = {};
+
 function buildHoleInputs(n) {
   document.getElementById('holes-title').textContent = `Hole scores — ${n} holes`;
   const wrap = document.getElementById('hole-inputs');
@@ -1040,66 +1042,67 @@ function buildHoleInputs(n) {
   const pl  = db.players.find(x=>x.id===pid);
   const siVals  = ev ? getSIValues(n, ev, pl||null)  : Array.from({length:n},(_,i)=>i+1);
   const parVals = ev ? getParValues(n, ev, pl||null) : Array.from({length:n},()=>4);
-
-  function makeHalfTable(startH, endH, label) {
-    const holes = Array.from({length: endH-startH+1}, (_,i)=>startH+i);
-    const rows = holes.map(h=>`
-      <tr>
-        <td style="background:#1a1a1a;color:#888;font-size:11px;font-weight:600;text-align:center;padding:7px 4px;border-bottom:0.5px solid #333;width:28px">${h}</td>
-        <td style="text-align:center;padding:4px 3px;border-bottom:0.5px solid var(--border);color:var(--text-3);font-size:11px">${parVals[h-1]||4}</td>
-        <td style="text-align:center;padding:4px 3px;border-bottom:0.5px solid var(--border);color:var(--text-3);font-size:11px">${siVals[h-1]||h}</td>
-        <td style="padding:3px 2px;border-bottom:0.5px solid var(--border)">
-          <input type="number" id="h${h}" min="1" max="15" placeholder="—"
-            style="width:100%;border:none;background:transparent;text-align:center;font-size:15px;font-weight:500;color:var(--text);font-family:var(--font-sans);padding:4px 0;outline:none"
-            oninput="updateRoundSummary();updateHolePts(${h})">
-        </td>
-        <td id="pts-h${h}" style="text-align:center;padding:4px 3px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;color:var(--text-3);min-width:24px">—</td>
-      </tr>`).join('');
-    return `
-      <div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)">
-        <div style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:7px 12px">${label}</div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead><tr>
-            <th style="background:#1a1a1a;color:#888;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">#</th>
-            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">Par</th>
-            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">SI</th>
-            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">Score</th>
-            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">Pts</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  }
-
-  if (n === 18) {
-    wrap.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      ${makeHalfTable(1,9,'Front 9')}${makeHalfTable(10,18,'Back 9')}
-    </div>`;
-  } else {
-    wrap.innerHTML = `<div style="display:grid;grid-template-columns:1fr">${makeHalfTable(1,n,'Holes')}</div>`;
-  }
-}
-
-function updateHolePts(hole) {
-  const eid = document.getElementById('r-event').value;
-  const pid = document.getElementById('r-player').value;
-  const ev  = db.events.find(e=>e.id===eid);
-  const pl  = db.players.find(x=>x.id===pid);
-  const ptEl = document.getElementById('pts-h'+hole);
-  if (!ptEl || !ev) return;
-  const n = 18;
   const hcp = pl ? parseFloat(pl.handicap_index) : 18;
-  let courseHcp = calcCourseHcp(hcp);
-  const siVals  = getSIValues(n, ev, pl||null);
-  const parVals = getParValues(n, ev, pl||null);
-  const v = parseInt(document.getElementById('h'+hole)?.value);
-  if (isNaN(v)) { ptEl.textContent = '—'; ptEl.style.color='var(--text-3)'; return; }
-  const strokes = getStrokeAllowance(courseHcp, siVals[hole-1], n);
-  const pts = calcStableford(v, parVals[hole-1], strokes);
-  const colors = {0:'#E24B4A', 1:'var(--text-3)', 2:'#1D9E75', 3:'#185FA5', 4:'#534AB7'};
-  ptEl.textContent = pts;
-  ptEl.style.color = colors[Math.min(pts,4)] || 'var(--text-3)';
+  const courseHcp = calcCourseHcp(hcp);
+
+  // Reset scores
+  for (let i=1;i<=n;i++) _holeScores[i] = null;
+
+  const btnStyle = 'width:44px;height:44px;border-radius:10px;border:1px solid var(--border-strong);background:var(--bg-2);color:var(--text);font-size:24px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;user-select:none;flex-shrink:0';
+
+  function makeCard(startH, endH, label) {
+    const holes = Array.from({length: endH-startH+1}, (_,i)=>startH+i);
+    const rows = holes.map(h => {
+      const par = parVals[h-1]||4;
+      const si  = siVals[h-1]||h;
+      return `<div style="display:grid;grid-template-columns:28px 1fr auto;align-items:center;border-bottom:0.5px solid var(--border)">
+        <div style="font-size:11px;font-weight:600;color:var(--text-3);background:var(--bg-2);text-align:center;padding:12px 4px;align-self:stretch;display:flex;align-items:center;justify-content:center">${h}</div>
+        <div style="padding:4px 10px">
+          <div style="font-size:10px;color:var(--text-3)">Par ${par} · SI ${si}</div>
+          <div id="pts-h${h}" style="font-size:12px;font-weight:600;color:var(--text-3);margin-top:1px">—</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 8px">
+          <button style="${btnStyle}" onclick="adjScore(${h},-1,${par},${si},${courseHcp})">−</button>
+          <div id="h${h}-disp" style="width:40px;text-align:center;font-size:20px;font-weight:700;color:var(--text-3)">—</div>
+          <button style="${btnStyle}" onclick="adjScore(${h},1,${par},${si},${courseHcp})">+</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)">
+      <div style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:8px 12px">${label}</div>
+      ${rows}
+    </div>`;
+  }
+
+  wrap.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    ${makeCard(1,9,'Front 9')}${makeCard(10,18,'Back 9')}
+  </div>`;
 }
+
+function adjScore(hole, delta, par, si, courseHcp) {
+  if (_holeScores[hole] === null) _holeScores[hole] = par;
+  _holeScores[hole] = Math.max(1, Math.min(15, _holeScores[hole] + delta));
+  const score = _holeScores[hole];
+  // Update display score with colour relative to par
+  const disp = document.getElementById('h'+hole+'-disp');
+  if (disp) {
+    disp.textContent = score;
+    const diff = score - par;
+    disp.style.color = diff <= -2 ? '#534AB7' : diff === -1 ? '#1D9E75' : diff === 0 ? 'var(--text)' : diff === 1 ? '#E24B4A' : '#A32D2D';
+  }
+  // Update pts
+  const strokes = getStrokeAllowance(courseHcp, si, 18);
+  const pts = calcStableford(score, par, strokes);
+  const ptEl = document.getElementById('pts-h'+hole);
+  if (ptEl) {
+    const ptsColors = {0:'#E24B4A',1:'var(--text-3)',2:'#1D9E75',3:'#185FA5',4:'#534AB7'};
+    ptEl.textContent = pts + ' pt' + (pts!==1?'s':'');
+    ptEl.style.color = ptsColors[Math.min(pts,4)]||'var(--text-3)';
+  }
+  updateRoundSummary();
+}
+
+function updateHolePts(hole) {} // kept for compatibility
 
 function buildEventSIInputs(n) {
   const wrap = document.getElementById('e-scorecard-wrap');
@@ -1499,8 +1502,8 @@ function updateRoundSummary() {
   const parVals = getParValues(n, ev, p || null);
   let pts=0, holes=0;
   for (let i=1; i<=n; i++) {
-    const v = parseInt(document.getElementById('h'+i)?.value);
-    if (!isNaN(v)) { pts += calcStableford(v, parVals[i-1], getStrokeAllowance(courseHcp, siVals[i-1], n)); holes++; }
+    const v = _holeScores[i];
+    if (v !== null && v !== undefined) { pts += calcStableford(v, parVals[i-1], getStrokeAllowance(courseHcp, siVals[i-1], n)); holes++; }
   }
   const tally = document.getElementById('live-tally');
   const tallyPts = document.getElementById('tally-pts');
@@ -1547,13 +1550,11 @@ async function saveRound() {
   const n = 18;
   const scores = [];
   for (let i=1; i<=n; i++) {
-    const el = document.getElementById('h'+i);
-    if (!el) { toast(`Hole input h${i} missing from page`, 'error'); return; }
-    const v = parseInt(el.value);
-    scores.push(isNaN(v)?null:v);
+    const v = _holeScores[i];
+    scores.push((v !== null && v !== undefined) ? v : null);
   }
   const filled = scores.filter(s=>s!==null).length;
-  if (filled < n) { toast(`Only ${filled} of ${n} hole scores entered`, 'error'); return; }
+  if (filled < n) { toast(`Only ${filled} of ${n} holes scored — tap + or − on each hole`, 'error'); return; }
   if (db.rounds.find(r=>r.event_id===eid&&r.player_id===pid)) { toast('Round already recorded for this player at this event', 'error'); return; }
   const parVals = getParValues(n, ev, pl);
   const hcpIdx = parseFloat(pl.handicap_index) || 18;
@@ -1575,7 +1576,7 @@ async function saveRound() {
   try {
     await post('rounds',{ event_id:eid, player_id:pid, hole_scores:scores, par_values:parVals, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_before:hcpIdx, handicap_after:newHcp, league_points:0 });
     toast(`Saved! ${totalPts} stableford pts · Pending verification`, 'success');
-    for (let i=1; i<=n; i++) { const h=document.getElementById('h'+i); if(h)h.value=''; }
+    for (let i=1; i<=n; i++) { _holeScores[i] = null; }
     document.getElementById('round-summary').classList.remove('show');
     await loadAll(); renderAll();
   } catch(e) { toast('Error saving: '+e.message, 'error'); }
