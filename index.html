@@ -1046,6 +1046,78 @@ function buildEventSIInputs(n) {
 }
 
 // ── Saved courses (localStorage) ──
+function seedSavedCourses() {
+  if (localStorage.getItem('bhgs_courses_seeded_v1')) return;
+  const courses = [
+    {
+      name: 'Tulfarris Hotel & Golf Resort',
+      cr: 73.2, slope: 132, par: 72,
+      wcr: null, wslope: null, wpar: null,
+      pars: [5,3,4,4,4,3,4,4,5, 4,3,4,5,4,5,3,4,4],
+      wpars: [], si: [11,13,5,2,8,9,15,17,12, 1,18,4,14,6,16,10,7,3],
+      wsi: []
+    },
+    {
+      name: 'Swords Open Golf Course',
+      cr: 70.8, slope: 126, par: 71,
+      wcr: null, wslope: null, wpar: null,
+      pars: [3,4,5,4,3,5,3,4,5, 4,4,4,3,4,3,5,4,4],
+      wpars: [], si: [5,11,9,13,17,3,15,1,7, 8,6,10,18,2,12,14,16,4],
+      wsi: []
+    },
+    {
+      name: 'Powerscourt Golf Club - West',
+      cr: 71.4, slope: 126, par: 72,
+      wcr: null, wslope: null, wpar: null,
+      pars: [4,3,4,4,3,3,5,4,4, 4,3,4,4,4,4,5,3,5],
+      wpars: [], si: [1,15,9,5,13,11,7,17,3, 2,16,12,6,10,4,14,18,8],
+      wsi: []
+    },
+    {
+      name: 'Greystones Golf Club',
+      cr: 68.4, slope: 123, par: 69,
+      wcr: null, wslope: null, wpar: null,
+      pars: [3,4,4,4,3,4,4,4,5, 4,3,4,4,3,5,4,3,4],
+      wpars: [], si: [13,5,1,11,17,3,9,15,7, 2,16,8,10,18,6,4,12,14],
+      wsi: []
+    },
+    {
+      name: 'Silloge Park Golf Club',
+      cr: 71.3, slope: 128, par: 71,
+      wcr: null, wslope: null, wpar: null,
+      pars: [4,3,5,4,5,4,3,4,3, 4,4,5,3,4,4,4,4,4],
+      wpars: [], si: [4,10,7,12,5,16,15,1,17, 2,8,3,13,14,11,9,18,6],
+      wsi: []
+    },
+    {
+      name: 'The Heritage Golf Resort',
+      cr: 74.7, slope: 142, par: 72,
+      wcr: null, wslope: null, wpar: null,
+      pars: [4,5,4,3,4,4,3,5,4, 5,4,4,4,5,3,4,3,4],
+      wpars: [], si: [14,2,12,8,10,4,18,16,6, 15,11,1,3,9,17,13,7,5],
+      wsi: []
+    },
+    {
+      name: 'Roganstown Golf and County Club',
+      cr: 72.5, slope: 129, par: 71,
+      wcr: null, wslope: null, wpar: null,
+      pars: [4,3,4,5,5,3,4,4,3, 5,4,3,4,4,4,4,3,5],
+      wpars: [], si: [4,18,6,16,14,8,2,10,12, 11,7,15,1,13,9,3,17,5],
+      wsi: []
+    },
+    {
+      name: 'Grange Castle Golf Club',
+      cr: 71.4, slope: 119, par: 72,
+      wcr: null, wslope: null, wpar: null,
+      pars: [4,5,4,4,3,4,5,3,4, 4,3,5,4,4,4,4,3,5],
+      wpars: [], si: [1,15,5,3,17,9,13,11,7, 8,10,14,4,12,6,2,18,16],
+      wsi: []
+    }
+  ];
+  setSavedCourses(courses);
+  localStorage.setItem('bhgs_courses_seeded_v1', '1');
+}
+
 function getSavedCourses() {
   try { return JSON.parse(localStorage.getItem('bhgs_saved_courses') || '[]'); } catch(e) { return []; }
 }
@@ -1111,7 +1183,8 @@ function deleteSavedCourse() {
   if (!confirm(`Delete "${name}" from saved courses?`)) return;
   courses.splice(idx, 1);
   setSavedCourses(courses);
-  renderSavedCourseDropdown();
+  seedSavedCourses();
+renderSavedCourseDropdown();
   toast(`"${name}" deleted`, 'success');
 }
 
