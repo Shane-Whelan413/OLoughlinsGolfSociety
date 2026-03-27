@@ -1061,9 +1061,9 @@ function buildHoleInputs(n) {
           <div style="font-size:10px;color:var(--text-3)">Par ${par} · SI ${si}</div>
           <div id="pts-h${h}" style="font-size:11px;font-weight:600;color:var(--text-3)">—</div>
         </div>
-        <button style="${btnStyle}" onclick="adjScore(${h},-1,${par},${si},${courseHcp})">−</button>
+        <button style="${btnStyle}" onclick="adjScore(${h},-1,${par},${si})">−</button>
         <div id="h${h}-disp" style="width:36px;text-align:center;font-size:20px;font-weight:700;color:var(--text-3);flex-shrink:0">—</div>
-        <button style="${btnStyle}" onclick="adjScore(${h},1,${par},${si},${courseHcp})">+</button>
+        <button style="${btnStyle}" onclick="adjScore(${h},1,${par},${si})">+</button>
       </div>`;
     }).join('');
     return `<div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)">
@@ -1077,7 +1077,7 @@ function buildHoleInputs(n) {
   </div>`;
 }
 
-function adjScore(hole, delta, par, si, courseHcp) {
+function adjScore(hole, delta, par, si) {
   if (_holeScores[hole] === null) _holeScores[hole] = par;
   _holeScores[hole] = Math.max(1, Math.min(15, _holeScores[hole] + delta));
   const score = _holeScores[hole];
@@ -1088,7 +1088,11 @@ function adjScore(hole, delta, par, si, courseHcp) {
     const diff = score - par;
     disp.style.color = diff <= -2 ? '#534AB7' : diff === -1 ? '#1D9E75' : diff === 0 ? 'var(--text)' : diff === 1 ? '#E24B4A' : '#A32D2D';
   }
-  // Update pts
+  // Always look up the current player's handicap fresh — never use stale baked-in value
+  const pid = document.getElementById('r-player')?.value;
+  const pl  = db.players.find(x=>x.id===pid);
+  const hcp = pl ? parseFloat(pl.handicap_index) : 0;
+  const courseHcp = calcCourseHcp(hcp);
   const strokes = getStrokeAllowance(courseHcp, si, 18);
   const pts = calcStableford(score, par, strokes);
   const ptEl = document.getElementById('pts-h'+hole);
