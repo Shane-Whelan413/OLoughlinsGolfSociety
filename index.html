@@ -1296,11 +1296,21 @@ function pickCourse() {
   document.getElementById('e-cr').value    = c.cr;
   document.getElementById('e-slope').value = c.slope;
   document.getElementById('e-par').value   = c.par;
-  for (let i=1; i<=n; i++) {
-    const ph = document.getElementById('e-par-h'+i); if(ph) ph.value = c.pars[i-1] || 4;
-    const si = document.getElementById('e-si'+i);    if(si) si.value = c.si[i-1]   || i;
+  // Auto-fill the date from OUTINGS schedule if not already set
+  const dateEl = document.getElementById('e-date');
+  if (dateEl && !dateEl.value) {
+    const matchDate = Object.entries(OUTINGS).find(([d, name]) => name === c.name);
+    if (matchDate) dateEl.value = matchDate[0];
   }
-  toast('Loaded ' + c.name, 'success');
+  // Wait for DOM to render the scorecard inputs before filling values
+  setTimeout(() => {
+    for (let i=1; i<=n; i++) {
+      const ph = document.getElementById('e-par-h'+i); if(ph) ph.value = c.pars[i-1] || 4;
+      const si = document.getElementById('e-si'+i);    if(si) si.value = c.si[i-1]   || i;
+    }
+    updateScorecardTotals();
+    toast('Loaded ' + c.name, 'success');
+  }, 50);
 }
 
 function loadSavedCourse() {
@@ -1403,15 +1413,18 @@ function saveCourse() {
 
 
 function onEventDateChange() {
-  const n = 18;
-  buildEventSIInputs(n);
+  // Only build scorecard if not already populated (don't wipe course data)
+  const existing = document.getElementById('e-par-h1');
+  if (!existing || !existing.value) {
+    buildEventSIInputs(18);
+  }
 }
 
 function onEventSelect() {
   checkDuplicateRound();
   const eid = document.getElementById('r-event').value;
   const ev  = db.events.find(e=>e.id===eid);
-  const n   = ev ? (18) : 9;
+  const n = 18;
   if (ev) buildHoleInputs(n);
   const siDisplay  = document.getElementById('event-si-display');
   const siReadout  = document.getElementById('event-si-readout');
