@@ -580,7 +580,7 @@
   <div id="add-round" class="section">
     <div class="card">
       <div class="card-title">Record a round</div>
-      <div class="form-row c2">
+      <div class="form-row" style="display:flex;flex-direction:column;gap:10px">
         <div class="form-group"><label>Event</label><select id="r-event" onchange="onEventSelect();checkDuplicateRound()"><option value="">Select event…</option></select></div>
         <div class="form-group"><label>Player</label><select id="r-player" onchange="updateRoundSummary();checkDuplicateRound()"><option value="">Select player…</option></select></div>
       </div>
