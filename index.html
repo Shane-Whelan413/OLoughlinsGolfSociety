@@ -1156,9 +1156,6 @@ function pickCourse() {
   document.getElementById('e-cr').value    = c.cr;
   document.getElementById('e-slope').value = c.slope;
   document.getElementById('e-par').value   = c.par;
-  document.getElementById('e-wcr').value   = '';
-  document.getElementById('e-wslope').value = '';
-  document.getElementById('e-wpar').value  = '';
   for (let i=1; i<=n; i++) {
     const ph = document.getElementById('e-par-h'+i); if(ph) ph.value = c.pars[i-1] || 4;
     const si = document.getElementById('e-si'+i);    if(si) si.value = c.si[i-1]   || i;
