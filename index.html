@@ -555,13 +555,7 @@
         <div class="form-group"><label>Par</label><input id="e-par" type="number" value="36" /></div>
       </div>
 
-      <div class="hole-section-label" id="e-par-title">Par per hole <span style="font-weight:400;text-transform:none;letter-spacing:0">— enter 3, 4 or 5 for each hole</span></div>
-      <div class="hole-grid" id="e-par-labels"></div>
-      <div class="hole-grid" id="e-par-inputs"></div>
-
-      <div class="hole-section-label" id="e-si-title">Stroke index <span style="font-weight:400;text-transform:none;letter-spacing:0">— enter 1 to 18 from scorecard (1 = hardest)</span></div>
-      <div class="hole-grid" id="e-si-labels"></div>
-      <div class="hole-grid" id="e-si-inputs"></div>
+      <div id="e-scorecard-wrap" style="margin-top:4px"></div>
 
       <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" id="btn-add-event" onclick="addEvent()">Create event</button>
@@ -1007,30 +1001,67 @@ function buildHoleInputs(n) {
 }
 
 function buildEventSIInputs(n) {
-  const siLbl    = document.getElementById('e-si-labels');
-  const siInp    = document.getElementById('e-si-inputs');
-  const wsiLbl   = document.getElementById('e-wsi-labels');
-  const wsiInp   = document.getElementById('e-wsi-inputs');
-  const parLbl   = document.getElementById('e-par-labels');
-  const parInp   = document.getElementById('e-par-inputs');
-  const wparLbl  = document.getElementById('e-wpar-h-labels');
-  const wparInp  = document.getElementById('e-wpar-h-inputs');
-  const siTitle  = document.getElementById('e-si-title');
+  const wrap = document.getElementById('e-scorecard-wrap');
+  if (!wrap) return;
 
-  siLbl.innerHTML=''; siInp.innerHTML='';
+  const sc_style = `
+    <style>
+      .sc-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px}
+      .sc-table th,.sc-table td{border:0.5px solid var(--border-strong);text-align:center;padding:5px 3px}
+      .sc-table th{background:var(--bg-2);font-weight:500;font-size:11px;color:var(--text-3)}
+      .sc-table td.sc-lbl{font-weight:500;font-size:11px;color:var(--text-3);background:var(--bg-2);text-align:left;padding-left:8px;white-space:nowrap}
+      .sc-table td.sc-sub{font-weight:500;background:var(--bg-2);font-size:12px}
+      .sc-inp{width:100%;border:none;background:transparent;text-align:center;font-size:12px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none;min-width:0}
+      .sc-inp:focus{background:rgba(55,138,221,0.12);border-radius:3px}
+      .sc-head{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px}
+    </style>
+  `;
 
-  parLbl.innerHTML=''; parInp.innerHTML='';
+  function makeTable(startHole, endHole, label) {
+    const count = endHole - startHole + 1;
+    const holes = Array.from({length: count}, (_, i) => startHole + i);
+    let parSum = 0;
 
-  siTitle.querySelector('span').textContent  = `— enter 1 to ${n} from scorecard (1 = hardest)`;
+    let hdrCells = holes.map(h => `<th>${h}</th>`).join('') + `<th class="sc-sub">${label}</th>`;
+    let parCells = holes.map(h => `<td><input class="sc-inp" type="number" id="e-par-h${h}" min="3" max="5" placeholder="4" oninput="updateScorecardTotals()"></td>`).join('') +
+      `<td class="sc-sub" id="sc-par-tot-${label}">—</td>`;
+    let siCells  = holes.map(h => `<td><input class="sc-inp" type="number" id="e-si${h}" min="1" max="${n}" placeholder="${h}"></td>`).join('') +
+      `<td class="sc-sub">—</td>`;
 
-  for (let i=1; i<=n; i++) {
-    const lsi = document.createElement('div'); lsi.className='hole-lbl'; lsi.textContent=i; siLbl.appendChild(lsi);
-    const si  = document.createElement('input'); si.type='number'; si.min=1; si.max=n; si.id='e-si'+i; si.placeholder=i; siInp.appendChild(si);
-
-    const lpar = document.createElement('div'); lpar.className='hole-lbl'; lpar.textContent=i; parLbl.appendChild(lpar);
-    const par  = document.createElement('input'); par.type='number'; par.min=3; par.max=5; par.id='e-par-h'+i; par.placeholder='4'; parInp.appendChild(par);
-
+    return `
+      <table class="sc-table">
+        <thead><tr><th style="text-align:left;padding-left:8px">Hole</th>${hdrCells}</tr></thead>
+        <tbody>
+          <tr><td class="sc-lbl">Par</td>${parCells}</tr>
+          <tr><td class="sc-lbl">S.I.</td>${siCells}</tr>
+        </tbody>
+      </table>`;
   }
+
+  let html = sc_style;
+  if (n === 18) {
+    html += `<div class="sc-head">Front 9</div>` + makeTable(1, 9, 'OUT');
+    html += `<div class="sc-head" style="margin-top:10px">Back 9</div>` + makeTable(10, 18, 'IN');
+  } else {
+    html += makeTable(1, n, 'OUT');
+  }
+
+  wrap.innerHTML = html;
+}
+
+function updateScorecardTotals() {
+  ['OUT','IN'].forEach(label => {
+    const tot = document.getElementById('sc-par-tot-'+label);
+    if (!tot) return;
+    const start = label === 'OUT' ? 1 : 10;
+    let sum = 0, valid = true;
+    for (let i = start; i < start + 9; i++) {
+      const v = parseInt(document.getElementById('e-par-h'+i)?.value);
+      if (isNaN(v)) { valid = false; break; }
+      sum += v;
+    }
+    tot.textContent = valid ? sum : '—';
+  });
 }
 
 // ── Saved courses (localStorage) ──
@@ -1502,18 +1533,7 @@ function editEvent(eid) {
   if (!ev) return;
   const n = ev.event_type==='outing_18' ? 18 : 9;
   const si   = ev.stroke_index   || Array.from({length:n},(_,i)=>i+1);
-  const wsi  = ev.womens_stroke_index || si;
   const pars = ev.par_values     || Array.from({length:n},()=>4);
-  const wpars= ev.womens_par_values || pars;
-
-  const holeRow = (idPrefix, vals, placeholder) =>
-    Array.from({length:n},(_,i)=>
-      `<input type="number" id="${idPrefix}${i+1}" value="${vals[i]||''}" placeholder="${placeholder}" min="1" max="${n>9?18:9}" style="height:32px;width:100%;text-align:center;font-size:12px;border-radius:6px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text);font-family:var(--font-sans)">`
-    ).join('');
-  const holeLabels = Array.from({length:n},(_,i)=>
-    `<div style="font-size:10px;text-align:center;color:var(--text-3)">${i+1}</div>`
-  ).join('');
-  const grid = `display:grid;grid-template-columns:repeat(${n},minmax(0,1fr));gap:3px;margin-bottom:6px`;
 
   document.getElementById('modal-title').textContent = `Edit event — ${ev.course_name}`;
   document.getElementById('modal-body').innerHTML = `
@@ -1527,15 +1547,46 @@ function editEvent(eid) {
       <div class="form-group"><label>Slope</label><input type="number" id="ee-slope" value="${ev.slope_rating}" /></div>
       <div class="form-group"><label>Par</label><input type="number" id="ee-mpar" value="${ev.par}" /></div>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Par per hole</div>
-    <div style="${grid}">${holeLabels}</div>
-    <div style="${grid};margin-bottom:10px">${holeRow('ee-ph', pars, '4')}</div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Stroke index</div>
-    <div style="${grid}">${holeLabels}</div>
-    <div style="${grid};margin-bottom:14px">${holeRow('ee-si', si, String(n))}</div>
+    <div id="ee-scorecard"></div>
     <button class="btn primary" onclick="saveEditedEvent('${eid}')" style="width:100%">Save changes</button>
   `;
   document.getElementById('modal-overlay').classList.add('open');
+  buildEditScorecard(n, si, pars);
+}
+
+function buildEditScorecard(n, si, pars) {
+  const wrap = document.getElementById('ee-scorecard');
+  if (!wrap) return;
+  const inpStyle = 'width:100%;border:none;background:transparent;text-align:center;font-size:12px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none;min-width:0';
+  function makeTable(startHole, endHole, label) {
+    const holes = Array.from({length: endHole - startHole + 1}, (_, i) => startHole + i);
+    const hdr = holes.map(h=>`<th style="border:0.5px solid var(--border-strong);text-align:center;padding:5px 3px;background:var(--bg-2);font-size:11px;color:var(--text-3)">${h}</th>`).join('') +
+      `<th style="border:0.5px solid var(--border-strong);text-align:center;padding:5px 3px;background:var(--bg-2);font-size:11px;font-weight:500;color:var(--text-3)">${label}</th>`;
+    const parCells = holes.map(h=>`<td style="border:0.5px solid var(--border-strong);padding:4px 2px"><input type="number" id="ee-ph${h}" value="${pars[h-1]||4}" min="3" max="5" style="${inpStyle}"></td>`).join('') +
+      `<td style="border:0.5px solid var(--border-strong);background:var(--bg-2);font-weight:500;font-size:12px;text-align:center" id="ee-par-tot-${label}">—</td>`;
+    const siCells = holes.map(h=>`<td style="border:0.5px solid var(--border-strong);padding:4px 2px"><input type="number" id="ee-si${h}" value="${si[h-1]||h}" min="1" max="${n}" style="${inpStyle};color:var(--text-3);font-size:11px"></td>`).join('') +
+      `<td style="border:0.5px solid var(--border-strong);background:var(--bg-2);text-align:center">—</td>`;
+    const lblStyle = 'border:0.5px solid var(--border-strong);background:var(--bg-2);font-size:11px;font-weight:500;color:var(--text-3);text-align:left;padding:5px 8px;white-space:nowrap';
+    return `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px">
+      <thead><tr><th style="${lblStyle}">Hole</th>${hdr}</tr></thead>
+      <tbody>
+        <tr><td style="${lblStyle}">Par</td>${parCells}</tr>
+        <tr><td style="${lblStyle}">S.I.</td>${siCells}</tr>
+      </tbody></table>`;
+  }
+  const headStyle = 'font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px';
+  let html = n === 18
+    ? `<div style="${headStyle}">Front 9</div>` + makeTable(1,9,'OUT') + `<div style="${headStyle};margin-top:10px">Back 9</div>` + makeTable(10,18,'IN')
+    : makeTable(1,n,'OUT');
+  wrap.innerHTML = html;
+  ['OUT','IN'].forEach(label => {
+    const tot = document.getElementById('ee-par-tot-'+label);
+    if (!tot) return;
+    const start = label==='OUT' ? 1 : 10;
+    let sum = 0;
+    for (let i=start; i<start+9; i++) sum += parseInt(document.getElementById('ee-ph'+i)?.value)||0;
+    tot.textContent = sum || '—';
+  });
 }
 
 async function saveEditedEvent(eid) {
