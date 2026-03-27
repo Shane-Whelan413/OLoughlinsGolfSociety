@@ -1006,46 +1006,52 @@ function buildEventSIInputs(n) {
 
   const sc_style = `
     <style>
-      .sc-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px;border-radius:8px;overflow:hidden}
-      .sc-table th,.sc-table td{border:1px solid var(--border-strong);text-align:center;padding:6px 3px}
-      .sc-table th{background:#1a1a1a;color:#FAC775;font-weight:600;font-size:11px;border-color:#333}
-      .sc-table td.sc-lbl{font-weight:700;font-size:11px;color:#fff;background:#1a1a1a;text-align:left;padding-left:10px;white-space:nowrap;border-color:#333;letter-spacing:.03em}
-      .sc-table td.sc-sub{font-weight:700;background:#1a1a1a;font-size:12px;color:#FAC775;border-color:#333}
-      .sc-table tr.row-par td{background:rgba(250,199,117,0.06)}
-      .sc-table tr.row-si td{background:rgba(255,255,255,0.03)}
-      .sc-inp{width:100%;border:none;background:transparent;text-align:center;font-size:12px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none;min-width:0}
-      .sc-inp:focus{background:rgba(250,199,117,0.15);border-radius:3px}
-      .sc-head{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px}
+      .sc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+      .sc-card{background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)}
+      .sc-card-title{background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:8px 12px}
+      .sc-v-table{width:100%;border-collapse:collapse}
+      .sc-v-table th{background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:600;padding:7px 4px;text-align:center;border-bottom:1px solid #333}
+      .sc-v-table th.sc-hole-th{color:#888;font-size:10px}
+      .sc-v-table td{text-align:center;padding:7px 4px;font-size:13px;border-bottom:0.5px solid var(--border);color:var(--text)}
+      .sc-v-table td.sc-hole-num{font-size:11px;font-weight:600;color:var(--text-3);background:var(--bg-2);width:30px}
+      .sc-v-table tr:nth-child(even) td:not(.sc-hole-num){background:rgba(250,199,117,0.05)}
+      .sc-v-table tr.sc-tot td{background:var(--bg-2);font-weight:700;font-size:13px;border-top:1px solid var(--border-strong)}
+      .sc-v-table tr.sc-tot td.sc-hole-num{background:#FAC775;color:#1a1a1a;font-size:10px;font-weight:700}
+      .sc-v-inp{width:100%;border:none;background:transparent;text-align:center;font-size:13px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none}
+      .sc-v-inp:focus{background:rgba(250,199,117,0.18);border-radius:4px}
     </style>
   `;
 
-  function makeTable(startHole, endHole, label) {
-    const count = endHole - startHole + 1;
-    const holes = Array.from({length: count}, (_, i) => startHole + i);
-    let parSum = 0;
-
-    let hdrCells = holes.map(h => `<th>${h}</th>`).join('') + `<th class="sc-sub">${label}</th>`;
-    let parCells = holes.map(h => `<td><input class="sc-inp" type="number" id="e-par-h${h}" min="3" max="5" placeholder="4" oninput="updateScorecardTotals()"></td>`).join('') +
-      `<td class="sc-sub" id="sc-par-tot-${label}">—</td>`;
-    let siCells  = holes.map(h => `<td><input class="sc-inp" type="number" id="e-si${h}" min="1" max="${n}" placeholder="${h}"></td>`).join('') +
-      `<td class="sc-sub">—</td>`;
-
+  function makeCard(startHole, endHole, label) {
+    const holes = Array.from({length: endHole - startHole + 1}, (_, i) => startHole + i);
+    const rows = holes.map(h => `
+      <tr>
+        <td class="sc-hole-num">${h}</td>
+        <td><input class="sc-v-inp" type="number" id="e-par-h${h}" min="3" max="5" placeholder="4" oninput="updateScorecardTotals()"></td>
+        <td><input class="sc-v-inp" type="number" id="e-si${h}" min="1" max="${n}" placeholder="${h}"></td>
+      </tr>`).join('');
     return `
-      <table class="sc-table">
-        <thead><tr><th style="text-align:left;padding-left:8px">Hole</th>${hdrCells}</tr></thead>
-        <tbody>
-          <tr class="row-par"><td class="sc-lbl">Par</td>${parCells}</tr>
-          <tr class="row-si"><td class="sc-lbl">S.I.</td>${siCells}</tr>
-        </tbody>
-      </table>`;
+      <div class="sc-card">
+        <div class="sc-card-title">${label === 'OUT' ? 'Front 9' : 'Back 9'}</div>
+        <table class="sc-v-table">
+          <thead><tr><th class="sc-hole-th">#</th><th>Par</th><th>S.I.</th></tr></thead>
+          <tbody>
+            ${rows}
+            <tr class="sc-tot">
+              <td class="sc-hole-num">${label}</td>
+              <td id="sc-par-tot-${label}">—</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
   }
 
   let html = sc_style;
   if (n === 18) {
-    html += `<div class="sc-head">Front 9</div>` + makeTable(1, 9, 'OUT');
-    html += `<div class="sc-head" style="margin-top:10px">Back 9</div>` + makeTable(10, 18, 'IN');
+    html += `<div class="sc-grid">${makeCard(1,9,'OUT')}${makeCard(10,18,'IN')}</div>`;
   } else {
-    html += makeTable(1, n, 'OUT');
+    html += `<div class="sc-grid" style="grid-template-columns:1fr">${makeCard(1,n,'OUT')}</div>`;
   }
 
   wrap.innerHTML = html;
@@ -1559,28 +1565,40 @@ function editEvent(eid) {
 function buildEditScorecard(n, si, pars) {
   const wrap = document.getElementById('ee-scorecard');
   if (!wrap) return;
-  const inpStyle = 'width:100%;border:none;background:transparent;text-align:center;font-size:12px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none;min-width:0';
-  function makeTable(startHole, endHole, label) {
+  const inp = (id, val, min, max) =>
+    `<input type="number" id="${id}" value="${val}" min="${min}" max="${max}" style="width:100%;border:none;background:transparent;text-align:center;font-size:13px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none">`;
+  function makeCard(startHole, endHole, label) {
     const holes = Array.from({length: endHole - startHole + 1}, (_, i) => startHole + i);
-    const hdr = holes.map(h=>`<th style="border:0.5px solid var(--border-strong);text-align:center;padding:5px 3px;background:var(--bg-2);font-size:11px;color:var(--text-3)">${h}</th>`).join('') +
-      `<th style="border:0.5px solid var(--border-strong);text-align:center;padding:5px 3px;background:var(--bg-2);font-size:11px;font-weight:500;color:var(--text-3)">${label}</th>`;
-    const parCells = holes.map(h=>`<td style="border:0.5px solid var(--border-strong);padding:4px 2px"><input type="number" id="ee-ph${h}" value="${pars[h-1]||4}" min="3" max="5" style="${inpStyle}"></td>`).join('') +
-      `<td style="border:0.5px solid var(--border-strong);background:var(--bg-2);font-weight:500;font-size:12px;text-align:center" id="ee-par-tot-${label}">—</td>`;
-    const siCells = holes.map(h=>`<td style="border:0.5px solid var(--border-strong);padding:4px 2px"><input type="number" id="ee-si${h}" value="${si[h-1]||h}" min="1" max="${n}" style="${inpStyle};color:var(--text-3);font-size:11px"></td>`).join('') +
-      `<td style="border:0.5px solid var(--border-strong);background:var(--bg-2);text-align:center">—</td>`;
-    const lblStyle = 'border:0.5px solid var(--border-strong);background:var(--bg-2);font-size:11px;font-weight:500;color:var(--text-3);text-align:left;padding:5px 8px;white-space:nowrap';
-    return `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px">
-      <thead><tr><th style="${lblStyle}">Hole</th>${hdr}</tr></thead>
-      <tbody>
-        <tr><td style="${lblStyle}">Par</td>${parCells}</tr>
-        <tr><td style="${lblStyle}">S.I.</td>${siCells}</tr>
-      </tbody></table>`;
+    const rows = holes.map(h => `
+      <tr>
+        <td style="font-size:11px;font-weight:600;color:var(--text-3);background:var(--bg-2);text-align:center;padding:7px 4px;border-bottom:0.5px solid var(--border);width:30px">${h}</td>
+        <td style="text-align:center;padding:7px 4px;border-bottom:0.5px solid var(--border);${holes.indexOf(h)%2===1?'background:rgba(250,199,117,0.05)':''}">${inp('ee-ph'+h, pars[h-1]||4, 3, 5)}</td>
+        <td style="text-align:center;padding:7px 4px;border-bottom:0.5px solid var(--border);${holes.indexOf(h)%2===1?'background:rgba(250,199,117,0.05)':''}">${inp('ee-si'+h, si[h-1]||h, 1, n)}</td>
+      </tr>`).join('');
+    return `
+      <div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)">
+        <div style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:8px 12px">${label === 'OUT' ? 'Front 9' : 'Back 9'}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="background:#1a1a1a;color:#888;font-size:10px;font-weight:600;padding:7px 4px;text-align:center;border-bottom:1px solid #333">#</th>
+            <th style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:600;padding:7px 4px;text-align:center;border-bottom:1px solid #333">Par</th>
+            <th style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:600;padding:7px 4px;text-align:center;border-bottom:1px solid #333">S.I.</th>
+          </tr></thead>
+          <tbody>
+            ${rows}
+            <tr>
+              <td style="background:#FAC775;color:#1a1a1a;font-size:10px;font-weight:700;text-align:center;padding:7px 4px;border-top:1px solid var(--border-strong)">${label}</td>
+              <td style="background:var(--bg-2);font-weight:700;font-size:13px;text-align:center;padding:7px 4px;border-top:1px solid var(--border-strong)" id="ee-par-tot-${label}">—</td>
+              <td style="background:var(--bg-2);text-align:center;padding:7px 4px;border-top:1px solid var(--border-strong)">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
   }
-  const headStyle = 'font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px';
-  let html = n === 18
-    ? `<div style="${headStyle}">Front 9</div>` + makeTable(1,9,'OUT') + `<div style="${headStyle};margin-top:10px">Back 9</div>` + makeTable(10,18,'IN')
-    : makeTable(1,n,'OUT');
-  wrap.innerHTML = html;
+  const grid = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px';
+  wrap.innerHTML = n === 18
+    ? `<div style="${grid}">${makeCard(1,9,'OUT')}${makeCard(10,18,'IN')}</div>`
+    : `<div style="${grid.replace('1fr 1fr','1fr')}">${makeCard(1,n,'OUT')}</div>`;
   ['OUT','IN'].forEach(label => {
     const tot = document.getElementById('ee-par-tot-'+label);
     if (!tot) return;
