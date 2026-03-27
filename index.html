@@ -534,14 +534,18 @@
     <div class="card" id="create-event-card">
       <div class="card-title">Create event</div>
       <div class="form-group" style="margin-bottom:12px">
-        <label>Load saved course</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="e-saved-course" onchange="loadSavedCourse()" style="flex:1">
-            <option value="">— select a saved course —</option>
-          </select>
-          <button class="btn sm" onclick="editSavedCourse()" style="flex-shrink:0">Edit</button>
-          <button class="btn sm danger" onclick="deleteSavedCourse()" style="flex-shrink:0">Delete</button>
-        </div>
+        <label>Select course</label>
+        <select id="e-course-picker" onchange="pickCourse()" style="height:38px;padding:0 11px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--bg);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;width:100%">
+          <option value="">— select a course —</option>
+          <option value="tulfarris">Tulfarris Hotel &amp; Golf Resort</option>
+          <option value="swords">Swords Open Golf Course</option>
+          <option value="powerscourt">Powerscourt Golf Club - West</option>
+          <option value="greystones">Greystones Golf Club</option>
+          <option value="silloge">Silloge Park Golf Club</option>
+          <option value="heritage">The Heritage Golf Resort</option>
+          <option value="roganstown">Roganstown Golf and County Club</option>
+          <option value="grange">Grange Castle Golf Club</option>
+        </select>
       </div>
       <div class="form-row c3">
         <div class="form-group"><label>Date</label><input id="e-date" type="date" onchange="onEventDateChange()" /></div>
@@ -1135,6 +1139,37 @@ function renderSavedCourseDropdown() {
   const courses = getSavedCourses();
   sel.innerHTML = '<option value="">— select a saved course —</option>' +
     courses.map((c,i) => `<option value="${i}">${c.name}</option>`).join('');
+}
+
+function pickCourse() {
+  const courses = {
+    tulfarris:   { name:'Tulfarris Hotel & Golf Resort', cr:73.2, slope:132, par:72, pars:[5,3,4,4,4,3,4,4,5,4,3,4,5,4,5,3,4,4], si:[11,13,5,2,8,9,15,17,12,1,18,4,14,6,16,10,7,3] },
+    swords:      { name:'Swords Open Golf Course',       cr:70.8, slope:126, par:71, pars:[3,4,5,4,3,5,3,4,5,4,4,4,3,4,3,5,4,4], si:[5,11,9,13,17,3,15,1,7,8,6,10,18,2,12,14,16,4] },
+    powerscourt: { name:'Powerscourt Golf Club - West',  cr:71.4, slope:126, par:72, pars:[4,3,4,4,3,3,5,4,4,4,3,4,4,4,4,5,3,5], si:[1,15,9,5,13,11,7,17,3,2,16,12,6,10,4,14,18,8] },
+    greystones:  { name:'Greystones Golf Club',          cr:68.4, slope:123, par:69, pars:[3,4,4,4,3,4,4,4,5,4,3,4,4,3,5,4,3,4], si:[13,5,1,11,17,3,9,15,7,2,16,8,10,18,6,4,12,14] },
+    silloge:     { name:'Silloge Park Golf Club',        cr:71.3, slope:128, par:71, pars:[4,3,5,4,5,4,3,4,3,4,4,5,3,4,4,4,4,4], si:[4,10,7,12,5,16,15,1,17,2,8,3,13,14,11,9,18,6] },
+    heritage:    { name:'The Heritage Golf Resort',      cr:74.7, slope:142, par:72, pars:[4,5,4,3,4,4,3,5,4,5,4,4,4,5,3,4,3,4], si:[14,2,12,8,10,4,18,16,6,15,11,1,3,9,17,13,7,5] },
+    roganstown:  { name:'Roganstown Golf and County Club', cr:72.5, slope:129, par:71, pars:[4,3,4,5,5,3,4,4,3,5,4,3,4,4,4,4,3,5], si:[4,18,6,16,14,8,2,10,12,11,7,15,1,13,9,3,17,5] },
+    grange:      { name:'Grange Castle Golf Club',       cr:71.4, slope:119, par:72, pars:[4,5,4,4,3,4,5,3,4,4,3,5,4,4,4,4,3,5], si:[1,15,5,3,17,9,13,11,7,8,10,14,4,12,6,2,18,16] }
+  };
+  const key = document.getElementById('e-course-picker').value;
+  if (!key) return;
+  const c = courses[key];
+  const n = 18;
+  document.getElementById('e-type').value = 'outing_18';
+  buildEventSIInputs(n);
+  document.getElementById('e-course').value = c.name;
+  document.getElementById('e-cr').value    = c.cr;
+  document.getElementById('e-slope').value = c.slope;
+  document.getElementById('e-par').value   = c.par;
+  document.getElementById('e-wcr').value   = '';
+  document.getElementById('e-wslope').value = '';
+  document.getElementById('e-wpar').value  = '';
+  for (let i=1; i<=n; i++) {
+    const ph = document.getElementById('e-par-h'+i); if(ph) ph.value = c.pars[i-1] || 4;
+    const si = document.getElementById('e-si'+i);    if(si) si.value = c.si[i-1]   || i;
+  }
+  toast('Loaded ' + c.name, 'success');
 }
 
 function loadSavedCourse() {
