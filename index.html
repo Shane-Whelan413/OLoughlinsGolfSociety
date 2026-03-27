@@ -1596,43 +1596,35 @@ async function deletePlayer(id, name) {
 
 async function addEvent() {
   const date   = document.getElementById('e-date').value;
-  const type   = document.getElementById('e-type').value;
   const course = document.getElementById('e-course').value.trim();
-  const cr     = parseFloat(document.getElementById('e-cr').value) || 35;
+  const cr     = parseFloat(document.getElementById('e-cr').value) || 72;
   const slope  = parseInt(document.getElementById('e-slope').value) || 113;
-  const par    = parseInt(document.getElementById('e-par').value) || (type==='outing_18'?72:36);
-  const wcr    = parseFloat(document.getElementById('e-wcr').value) || null;
-  const wslope = parseInt(document.getElementById('e-wslope').value) || null;
-  const wpar   = parseInt(document.getElementById('e-wpar').value) || null;
+  const par    = parseInt(document.getElementById('e-par').value) || 72;
   const n      = 18;
-  if (!date || !course) { toast('Enter date and course name', 'error'); return; }
+  if (!date)   { toast('Please select a date', 'error'); return; }
+  if (!course) { toast('Please enter a course name', 'error'); return; }
   if (db.events.find(e=>e.event_date===date)) { toast('An event already exists on this date', 'error'); return; }
-  const siVals = [], wsiVals = [], parVals = [], wparVals = [];
+  const siVals = [], parVals = [];
   for (let i=1; i<=n; i++) {
-    const sv  = parseInt(document.getElementById('e-si'+i)?.value);
+    const sv = parseInt(document.getElementById('e-si'+i)?.value);
     siVals.push(isNaN(sv) ? i : sv);
-    const wsv = parseInt(document.getElementById('e-wsi'+i)?.value);
-    wsiVals.push(isNaN(wsv) ? (isNaN(sv) ? i : sv) : wsv);
-    const pv  = parseInt(document.getElementById('e-par-h'+i)?.value);
+    const pv = parseInt(document.getElementById('e-par-h'+i)?.value);
     parVals.push(isNaN(pv) ? 4 : pv);
-    const wpv = parseInt(document.getElementById('e-wpar-h'+i)?.value);
-    wparVals.push(isNaN(wpv) ? (isNaN(pv) ? 4 : pv) : wpv);
   }
-  const btn = document.getElementById('btn-add-event'); btn.disabled=true;
+  const btn = document.getElementById('btn-add-event'); btn.disabled=true; btn.textContent='Saving…';
   try {
-    await post('events',{ event_date:date, event_type:type, course_name:course, course_rating:cr, slope_rating:slope, par, stroke_index:siVals, par_values:parVals });
+    await post('events',{ event_date:date, event_type:'outing_18', course_name:course, course_rating:cr, slope_rating:slope, par, stroke_index:siVals, par_values:parVals });
     document.getElementById('e-course').value='';
-
-    for (let i=1; i<=n; i++) {
-      const es=document.getElementById('e-si'+i); if(es) es.value='';
-
-      const ep=document.getElementById('e-par-h'+i); if(ep) ep.value='';
-
-    }
+    document.getElementById('e-date').value='';
+    document.getElementById('e-cr').value='';
+    document.getElementById('e-slope').value='';
+    document.getElementById('e-par').value='';
+    document.getElementById('e-course-picker').value='';
+    document.getElementById('e-scorecard-wrap').innerHTML='';
     toast('Event created!', 'success');
     await loadAll(); renderAll();
   } catch(e) { toast('Error: '+e.message, 'error'); }
-  btn.disabled=false;
+  btn.disabled=false; btn.textContent='Create event';
 }
 
 function editEvent(eid) {
