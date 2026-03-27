@@ -1006,13 +1006,15 @@ function buildEventSIInputs(n) {
 
   const sc_style = `
     <style>
-      .sc-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px}
-      .sc-table th,.sc-table td{border:0.5px solid var(--border-strong);text-align:center;padding:5px 3px}
-      .sc-table th{background:var(--bg-2);font-weight:500;font-size:11px;color:var(--text-3)}
-      .sc-table td.sc-lbl{font-weight:500;font-size:11px;color:var(--text-3);background:var(--bg-2);text-align:left;padding-left:8px;white-space:nowrap}
-      .sc-table td.sc-sub{font-weight:500;background:var(--bg-2);font-size:12px}
+      .sc-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px;border-radius:8px;overflow:hidden}
+      .sc-table th,.sc-table td{border:1px solid var(--border-strong);text-align:center;padding:6px 3px}
+      .sc-table th{background:#1a1a1a;color:#FAC775;font-weight:600;font-size:11px;border-color:#333}
+      .sc-table td.sc-lbl{font-weight:700;font-size:11px;color:#fff;background:#1a1a1a;text-align:left;padding-left:10px;white-space:nowrap;border-color:#333;letter-spacing:.03em}
+      .sc-table td.sc-sub{font-weight:700;background:#1a1a1a;font-size:12px;color:#FAC775;border-color:#333}
+      .sc-table tr.row-par td{background:rgba(250,199,117,0.06)}
+      .sc-table tr.row-si td{background:rgba(255,255,255,0.03)}
       .sc-inp{width:100%;border:none;background:transparent;text-align:center;font-size:12px;color:var(--text);font-family:var(--font-sans);padding:0;outline:none;min-width:0}
-      .sc-inp:focus{background:rgba(55,138,221,0.12);border-radius:3px}
+      .sc-inp:focus{background:rgba(250,199,117,0.15);border-radius:3px}
       .sc-head{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px}
     </style>
   `;
@@ -1032,8 +1034,8 @@ function buildEventSIInputs(n) {
       <table class="sc-table">
         <thead><tr><th style="text-align:left;padding-left:8px">Hole</th>${hdrCells}</tr></thead>
         <tbody>
-          <tr><td class="sc-lbl">Par</td>${parCells}</tr>
-          <tr><td class="sc-lbl">S.I.</td>${siCells}</tr>
+          <tr class="row-par"><td class="sc-lbl">Par</td>${parCells}</tr>
+          <tr class="row-si"><td class="sc-lbl">S.I.</td>${siCells}</tr>
         </tbody>
       </table>`;
   }
