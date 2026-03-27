@@ -1981,11 +1981,17 @@ function renderProfile() {
     el.innerHTML = '<div class="empty" style="padding:3rem">Log in to view your profile</div>';
     return;
   }
-  // Admins logged in via password won't have a playerId — find them by is_admin flag or name
+  // Get playerId — works for both member and admin logins via name+PIN
   let pid = currentUser.playerId;
+  // Fallback: admin logged in via password — find by is_admin flag
   if (!pid && currentUser.role === 'admin') {
     const adminPlayer = db.players.find(p => p.is_admin);
     if (adminPlayer) pid = adminPlayer.id;
+  }
+  // Fallback: try matching by name
+  if (!pid && currentUser.name) {
+    const namedPlayer = db.players.find(p => p.name === currentUser.name);
+    if (namedPlayer) pid = namedPlayer.id;
   }
   if (!pid) {
     el.innerHTML = '<div class="empty" style="padding:3rem">Log in as a member to view your profile</div>';
