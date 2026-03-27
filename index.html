@@ -1051,7 +1051,7 @@ function buildEventSIInputs(n) {
 
 // ── Saved courses (localStorage) ──
 function seedSavedCourses() {
-  if (localStorage.getItem('bhgs_courses_seeded_v1')) return;
+  if (localStorage.getItem('bhgs_courses_seeded_v2')) return;
   const courses = [
     {
       name: 'Tulfarris Hotel & Golf Resort',
@@ -1119,7 +1119,7 @@ function seedSavedCourses() {
     }
   ];
   setSavedCourses(courses);
-  localStorage.setItem('bhgs_courses_seeded_v1', '1');
+  localStorage.setItem('bhgs_courses_seeded_v2', '1');
 }
 
 function getSavedCourses() {
