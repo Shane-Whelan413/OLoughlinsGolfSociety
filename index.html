@@ -463,7 +463,13 @@
   </button>
 </nav>
 
+<div id="offline-banner" style="display:none;background:#E24B4A;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:500;position:sticky;top:0;z-index:200">
+  You're offline — scores will save when you reconnect
+</div>
 <div class="content">
+  <div id="offline-banner" style="display:none;background:#1a1a1a;color:#FAC775;text-align:center;padding:10px 16px;font-size:13px;font-weight:500;letter-spacing:.02em">
+    You're offline — scores and data may not be up to date
+  </div>
 
   <!-- HOME / NOTICEBOARD -->
   <div id="home" class="section active">
@@ -572,8 +578,8 @@
     <div class="card">
       <div class="card-title">Record a round</div>
       <div class="form-row c2">
-        <div class="form-group"><label>Event</label><select id="r-event" onchange="onEventSelect()"><option value="">Select event…</option></select></div>
-        <div class="form-group"><label>Player</label><select id="r-player" onchange="updateRoundSummary()"><option value="">Select player…</option></select></div>
+        <div class="form-group"><label>Event</label><select id="r-event" onchange="onEventSelect();checkDuplicateRound()"><option value="">Select event…</option></select></div>
+        <div class="form-group"><label>Player</label><select id="r-player" onchange="updateRoundSummary();checkDuplicateRound()"><option value="">Select player…</option></select></div>
       </div>
       <div id="event-si-display" style="display:none;margin-bottom:8px">
         <div class="hole-section-label">Course info for this event</div>
@@ -582,7 +588,31 @@
       </div>
       <div id="holes-section">
         <div class="hole-section-label" id="holes-title">Hole scores — 9 holes</div>
+        <div id="live-tally" style="display:none;background:#1a1a1a;border-radius:10px;padding:12px 16px;margin-bottom:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+            <div style="text-align:center">
+              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Points</div>
+              <div id="tally-pts" style="font-size:22px;font-weight:700;color:#FAC775;line-height:1">—</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Holes</div>
+              <div id="tally-holes" style="font-size:22px;font-weight:700;color:#fff;line-height:1">0</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Course Hcp</div>
+              <div id="tally-hcp" style="font-size:22px;font-weight:700;color:#fff;line-height:1">—</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">New Hcp</div>
+              <div id="tally-newhcp" style="font-size:22px;font-weight:700;color:#fff;line-height:1">—</div>
+            </div>
+          </div>
+        </div>
         <div class="hole-scroll-wrap" id="hole-inputs"></div>
+      </div>
+      <div id="duplicate-warning" style="display:none;background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">⚠️</span>
+        <span>A round has already been submitted for this player at this event. Contact David to make any changes.</span>
       </div>
       <div id="round-summary" class="summary-bar"></div>
       <div style="margin-top:1rem">
@@ -788,6 +818,13 @@ function assignLeaguePts(rounds) {
 }
 
 async function loadAll() {
+  if (!navigator.onLine) {
+    const ob = document.getElementById('offline-banner');
+    if (ob) ob.style.display = '';
+    return;
+  }
+  const ob = document.getElementById('offline-banner');
+  if (ob) ob.style.display = 'none';
   const safeGet = async (path) => {
     try { return await get(path); } catch(e) { console.error('safeGet error:', path, e.message); return []; }
   };
@@ -957,6 +994,7 @@ function renderEvents() {
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn sm" onclick="viewEventResults('${e.id}')">Results</button>
         ${isAdmin ? `<button class="btn sm" onclick="editEvent('${e.id}')">Edit</button>` : ''}
+        ${isAdmin && db.rounds.filter(r=>r.event_id===e.id&&!r.verified).length > 0 ? `<button class="btn sm" style="background:#E1F5EE;color:#085041;border-color:#9FE1CB" onclick="verifyAllRounds('${e.id}')">Verify all (${db.rounds.filter(r=>r.event_id===e.id&&!r.verified).length})</button>` : ''}
         ${isAdmin ? `<button class="btn sm" style="background:#E1F5EE;color:#085041;border-color:#9FE1CB" onclick="showPostUpdate('${e.id}')">Post update</button>` : ''}
         ${isAdmin ? `<button class="btn sm" style="background:${e.published?'#FCEBEB':'#E1F5EE'};color:${e.published?'#A32D2D':'#085041'};border-color:${e.published?'#F7C1C1':'#9FE1CB'}" onclick="togglePublishEvent('${e.id}',${!!e.published})">${e.published?'Unpublish':'Publish results'}</button>` : ''}
         ${isAdmin ? `<button class="btn sm danger" onclick="deleteEvent('${e.id}')">Delete</button>` : ''}
@@ -978,26 +1016,94 @@ function renderAddRound() {
   }
   re.innerHTML = '<option value="">Select event…</option>' + [...db.events].reverse().map(e=>`<option value="${e.id}">${fmtDate(e.event_date)} — ${e.course_name} (${e.event_type==='outing_18'?'18h':'9h'})</option>`).join('');
   buildHoleInputs(9);
+  checkDuplicateRound();
+}
+
+function checkDuplicateRound() {
+  const eid = document.getElementById('r-event')?.value;
+  const pid = document.getElementById('r-player')?.value;
+  const warn = document.getElementById('duplicate-warning');
+  const saveBtn = document.getElementById('btn-save-round');
+  if (!warn) return;
+  if (eid && pid && db.rounds.find(r=>r.event_id===eid && r.player_id===pid)) {
+    warn.style.display = 'block';
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; }
+  } else {
+    warn.style.display = 'none';
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = ''; }
+  }
 }
 
 function buildHoleInputs(n) {
   document.getElementById('holes-title').textContent = `Hole scores — ${n} holes`;
   const wrap = document.getElementById('hole-inputs');
-  wrap.innerHTML = '';
-  for (let i=1; i<=n; i++) {
-    const card = document.createElement('div');
-    card.className = 'hole-card-inp';
-    const lbl = document.createElement('div');
-    lbl.className = 'hole-lbl';
-    lbl.textContent = 'H' + i;
-    const inp = document.createElement('input');
-    inp.type = 'number'; inp.min = 1; inp.max = 15;
-    inp.id = 'h' + i; inp.placeholder = '—';
-    inp.addEventListener('input', updateRoundSummary);
-    card.appendChild(lbl);
-    card.appendChild(inp);
-    wrap.appendChild(card);
+  const eid = document.getElementById('r-event').value;
+  const pid = document.getElementById('r-player').value;
+  const ev  = db.events.find(e=>e.id===eid);
+  const pl  = db.players.find(x=>x.id===pid);
+  const siVals  = ev ? getSIValues(n, ev, pl||null)  : Array.from({length:n},(_,i)=>i+1);
+  const parVals = ev ? getParValues(n, ev, pl||null) : Array.from({length:n},()=>4);
+
+  function makeHalfTable(startH, endH, label) {
+    const holes = Array.from({length: endH-startH+1}, (_,i)=>startH+i);
+    const rows = holes.map(h=>`
+      <tr>
+        <td style="background:#1a1a1a;color:#888;font-size:11px;font-weight:600;text-align:center;padding:7px 4px;border-bottom:0.5px solid #333;width:28px">${h}</td>
+        <td style="text-align:center;padding:4px 3px;border-bottom:0.5px solid var(--border);color:var(--text-3);font-size:11px">${parVals[h-1]||4}</td>
+        <td style="text-align:center;padding:4px 3px;border-bottom:0.5px solid var(--border);color:var(--text-3);font-size:11px">${siVals[h-1]||h}</td>
+        <td style="padding:3px 2px;border-bottom:0.5px solid var(--border)">
+          <input type="number" id="h${h}" min="1" max="15" placeholder="—"
+            style="width:100%;border:none;background:transparent;text-align:center;font-size:15px;font-weight:500;color:var(--text);font-family:var(--font-sans);padding:4px 0;outline:none"
+            oninput="updateRoundSummary();updateHolePts(${h})">
+        </td>
+        <td id="pts-h${h}" style="text-align:center;padding:4px 3px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;color:var(--text-3);min-width:24px">—</td>
+      </tr>`).join('');
+    return `
+      <div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)">
+        <div style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:7px 12px">${label}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="background:#1a1a1a;color:#888;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">#</th>
+            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">Par</th>
+            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">SI</th>
+            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">Score</th>
+            <th style="background:#1a1a1a;color:#FAC775;font-size:10px;padding:6px 4px;text-align:center;border-bottom:1px solid #333">Pts</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
   }
+
+  if (n === 18) {
+    wrap.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      ${makeHalfTable(1,9,'Front 9')}${makeHalfTable(10,18,'Back 9')}
+    </div>`;
+  } else {
+    wrap.innerHTML = `<div style="display:grid;grid-template-columns:1fr">${makeHalfTable(1,n,'Holes')}</div>`;
+  }
+}
+
+function updateHolePts(hole) {
+  const eid = document.getElementById('r-event').value;
+  const pid = document.getElementById('r-player').value;
+  const ev  = db.events.find(e=>e.id===eid);
+  const pl  = db.players.find(x=>x.id===pid);
+  const ptEl = document.getElementById('pts-h'+hole);
+  if (!ptEl || !ev) return;
+  const n = ev.event_type==='outing_18' ? 18 : 9;
+  const hcp = pl ? parseFloat(pl.handicap_index) : 18;
+  const { cr, slope, par } = getCourseIndexForPlayer(pl, ev);
+  let courseHcp = calcCourseHcp(hcp, slope, cr, par);
+  if (ev.event_type==='outing_18') courseHcp = courseHcp * 2;
+  const siVals  = getSIValues(n, ev, pl||null);
+  const parVals = getParValues(n, ev, pl||null);
+  const v = parseInt(document.getElementById('h'+hole)?.value);
+  if (isNaN(v)) { ptEl.textContent = '—'; ptEl.style.color='var(--text-3)'; return; }
+  const strokes = getStrokeAllowance(courseHcp, siVals[hole-1], n);
+  const pts = calcStableford(v, parVals[hole-1], strokes);
+  const colors = {0:'#E24B4A', 1:'var(--text-3)', 2:'#1D9E75', 3:'#185FA5', 4:'#534AB7'};
+  ptEl.textContent = pts;
+  ptEl.style.color = colors[Math.min(pts,4)] || 'var(--text-3)';
 }
 
 function buildEventSIInputs(n) {
@@ -1315,6 +1421,7 @@ function onEventDateChange() {
 }
 
 function onEventSelect() {
+  checkDuplicateRound();
   const eid = document.getElementById('r-event').value;
   const ev  = db.events.find(e=>e.id===eid);
   const n   = ev ? (ev.event_type==='outing_18' ? 18 : 9) : 9;
@@ -1405,6 +1512,15 @@ function updateRoundSummary() {
     const v = parseInt(document.getElementById('h'+i)?.value);
     if (!isNaN(v)) { pts += calcStableford(v, parVals[i-1], getStrokeAllowance(courseHcp, siVals[i-1], n)); holes++; }
   }
+  const tally = document.getElementById('live-tally');
+  const tallyPts = document.getElementById('tally-pts');
+  const tallyHoles = document.getElementById('tally-holes');
+  const tallyHcp = document.getElementById('tally-hcp');
+  const tallyNew = document.getElementById('tally-newhcp');
+  if (tally) {
+    tally.style.display = '';
+    if (tallyHcp) tallyHcp.textContent = courseHcp;
+  }
   if (holes > 0) {
     const eventRounds = db.rounds.filter(r=>r.event_id===eid);
     const allPts = [...eventRounds.map(r=>r.stableford_points), pts].sort((a,b)=>b-a);
@@ -1415,10 +1531,18 @@ function updateRoundSummary() {
       : pos <= 3
         ? ` · Hcp: ${hcp} (top 3 — no change)`
         : ` · Hcp: ${hcp} → ${newH} (+0.2)`;
-    const outingNote = ev.event_type==='outing_18' ? ` · Course hcp doubled (${courseHcp})${indexLabel}` : ` · Course hcp: ${courseHcp}${indexLabel}`;
-    sb.textContent = `${holes} holes · ${pts} stableford pts${outingNote}${hcpNote}`;
+    const outingNote = ev.event_type==='outing_18' ? ` · Course hcp doubled (${courseHcp})` : ` · Course hcp: ${courseHcp}`;
+    sb.textContent = `${holes}/${n} holes · ${pts} pts${outingNote}${hcpNote}`;
     sb.classList.add('show');
-  } else { sb.classList.remove('show'); }
+    if (tallyPts) { tallyPts.textContent = pts; tallyPts.style.color = pts >= 18 ? '#1D9E75' : pts >= 12 ? '#FAC775' : '#E24B4A'; }
+    if (tallyHoles) tallyHoles.textContent = `${holes}/${n}`;
+    if (tallyNew) { tallyNew.textContent = newH; tallyNew.style.color = newH < hcp ? '#1D9E75' : newH > hcp ? '#E24B4A' : '#888'; }
+  } else {
+    sb.classList.remove('show');
+    if (tallyPts) tallyPts.textContent = '—';
+    if (tallyHoles) tallyHoles.textContent = '0';
+    if (tallyNew) tallyNew.textContent = '—';
+  }
 }
 
 async function saveRound() {
@@ -1713,41 +1837,68 @@ function renderSchedule() {
   db.events.forEach(e=>{ byDate[e.event_date]=e; });
   const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   const outingsLogged = db.events.filter(e=>e.event_type==='outing_18').length;
-  document.getElementById('schedule-table').innerHTML = `
+
+  // Find next upcoming outing
+  const nextEntry = seasonDates.find(e=>e.date >= today);
+  let nextBanner = '';
+  if (nextEntry) {
+    const nextDate = new Date(nextEntry.date + 'T00:00:00');
+    const todayDate = new Date(today + 'T00:00:00');
+    const diffDays = Math.round((nextDate - todayDate) / 86400000);
+    const ev = byDate[nextEntry.date];
+    const courseName = ev ? ev.course_name : (nextEntry.course || 'TBC');
+    const countdown = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow!' : `${diffDays} days away`;
+    nextBanner = `
+      <div style="background:#1a1a1a;border-radius:12px;padding:16px 18px;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FAC775;margin-bottom:4px">Next outing</div>
+          <div style="font-size:16px;font-weight:600;color:#fff">${courseName}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px">${fmtDate(nextEntry.date)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:26px;font-weight:700;color:#FAC775;line-height:1">${diffDays === 0 ? '⛳' : diffDays}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">${diffDays === 0 ? 'Tee off!' : 'days to go'}</div>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('schedule-table').innerHTML = nextBanner + `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem">
       <span class="badge gray">${seasonDates.length} outings in season</span>
-      <span class="badge purple">${outingsLogged} / ${seasonDates.length} outings logged</span>
+      <span class="badge purple">${outingsLogged} / ${seasonDates.length} played</span>
     </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Status</th><th>Course</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Date</th><th>Course</th><th>Status</th><th>Winner</th><th></th></tr></thead>
       <tbody>${seasonDates.map((entry,i)=>{
-        const { date: d, isOuting, course: outingCourse } = entry;
+        const { date: d, course: outingCourse } = entry;
         const ev     = byDate[d];
         const isPast = d < today;
         const isTdy  = d === today;
-        let status, courseName;
-        const typeLabel = '<span class="badge purple">18-hole outing</span>';
+        let status, winner = '';
         if (ev) {
-          status     = isTdy
-            ? '<span class="badge gold">Today</span>'
-            : isPast
-              ? '<span class="badge purple">Played</span>'
-              : '<span class="badge gray">Upcoming</span>';
-          courseName = ev.course_name;
+          const evRounds = db.rounds.filter(r=>r.event_id===ev.id && r.verified).sort((a,b)=>b.stableford_points-a.stableford_points);
+          if (evRounds.length) {
+            const medals = ['🥇','🥈','🥉'];
+            winner = evRounds.slice(0,3).map((r,i) => {
+              const p = db.players.find(x=>x.id===r.player_id);
+              return p ? `<span style="font-size:11px;white-space:nowrap">${medals[i]} ${p.name.split(' ')[0]} <span style="color:var(--text-3)">${r.stableford_points}pts</span></span>` : '';
+            }).filter(Boolean).join('<br>');
+          }
+          status = isTdy ? '<span class="badge gold">Today</span>'
+            : isPast ? '<span class="badge purple">Played</span>'
+            : '<span class="badge gray">Upcoming</span>';
         } else {
-          status     = isTdy
-            ? '<span class="badge gold">Today</span>'
-            : isPast
-              ? '<span class="badge gray">Not logged</span>'
-              : '<span class="badge gray">Upcoming</span>';
-          courseName = outingCourse || '—';
+          status = isTdy ? '<span class="badge gold">Today</span>'
+            : isPast ? '<span class="badge gray">Not logged</span>'
+            : '<span class="badge gray">Upcoming</span>';
         }
+        const courseName = ev ? ev.course_name : (outingCourse || '—');
         return `<tr>
           <td style="color:var(--text-3);font-size:12px">${i+1}</td>
-          <td>${fmtDate(d)}</td>
-          <td>${typeLabel}</td>
-          <td>${status}</td>
+          <td style="white-space:nowrap">${fmtDate(d)}</td>
           <td style="color:var(--text-2)">${courseName}</td>
+          <td>${status}</td>
+          <td>${winner}</td>
           <td>${ev ? `<button class="btn sm" onclick="viewEventResults('${ev.id}')">Results</button>` : ''}</td>
         </tr>`;
       }).join('')}</tbody>
@@ -2102,6 +2253,17 @@ async function saveEditedRound(rid) {
     await patch(`rounds?id=eq.${rid}`, { hole_scores:scores, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_after:newHcp, verified:false });
     toast(`Round updated! ${totalPts} pts · Needs re-verification`, 'success');
     closeModal();
+    await loadAll(); renderAll();
+  } catch(e) { toast('Error: '+e.message, 'error'); }
+}
+
+async function verifyAllRounds(eid) {
+  const unverified = db.rounds.filter(r=>r.event_id===eid && !r.verified);
+  if (!unverified.length) { toast('No unverified rounds for this event', 'error'); return; }
+  if (!confirm(`Verify all ${unverified.length} rounds for this event?`)) return;
+  try {
+    await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
+    toast(`${unverified.length} rounds verified!`, 'success');
     await loadAll(); renderAll();
   } catch(e) { toast('Error: '+e.message, 'error'); }
 }
@@ -2662,9 +2824,29 @@ buildEventSIInputs(9);
 
 renderSavedCourseDropdown();
 
+function updateOfflineBanner() {
+  const banner = document.getElementById('offline-banner');
+  if (banner) banner.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online',  () => { updateOfflineBanner(); toast('Back online!', 'success'); });
+window.addEventListener('offline', () => { updateOfflineBanner(); });
+updateOfflineBanner();
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/OLoughlinsGolfSociety/sw.js', { scope: '/OLoughlinsGolfSociety/' }).catch(()=>{});
 }
+
+window.addEventListener('online', () => {
+  const ob = document.getElementById('offline-banner');
+  if (ob) ob.style.display = 'none';
+  loadAll().then(renderAll);
+  toast('Back online — syncing...', 'success');
+});
+window.addEventListener('offline', () => {
+  const ob = document.getElementById('offline-banner');
+  if (ob) ob.style.display = '';
+  toast('You\'re offline', 'error');
+});
 
 init();
 </script>
