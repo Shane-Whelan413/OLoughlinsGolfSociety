@@ -1967,7 +1967,7 @@ function renderHome() {
           <span class="badge" style="background:#FAC775;color:#1a1a1a">📢 Notice</span>
           <span style="font-size:11px;color:var(--text-3)">${fmtDate(n.created_at ? n.created_at.slice(0,10) : '')}</span>
         </div>
-        <div style="font-size:14px;color:var(--text);line-height:1.5">${n.custom_text || ''}</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.5">${(n.title ? '<strong>'+n.title+'</strong><br>' : '')}${n.body || ''}</div>
         ${isAdmin ? `<div style="margin-top:12px;text-align:right"><button class="btn sm danger" onclick="deleteNotice('${n.id}')">Remove</button></div>` : ''}
       </div>`;
     }
@@ -1995,12 +1995,12 @@ function renderHome() {
         <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Closest to pin</div>
         <div style="font-size:13px">📍 ${n.closest_to_pin}</div>
       </div>` : '';
-    const custom = n.custom_text ? `
-      <div style="margin-top:10px;font-size:13px;color:var(--text-2);font-style:italic;border-left:3px solid var(--green);padding-left:10px">${n.custom_text}</div>` : '';
+    const custom = n.body ? `
+      <div style="margin-top:10px;font-size:13px;color:var(--text-2);font-style:italic;border-left:3px solid var(--green);padding-left:10px">${n.body}</div>` : '';
     return `<div class="card" style="margin-bottom:1rem">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div>
-          <div style="font-family:'DM Serif Display',serif;font-size:17px">${ev ? ev.course_name : 'Event'}</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:17px">${n.title || (ev ? ev.course_name : 'Event')}</div>
           <div style="font-size:12px;color:var(--text-3)">${ev ? fmtDate(ev.event_date) : ''}</div>
         </div>
         <span class="badge purple">Outing</span>
@@ -2037,9 +2037,9 @@ async function submitPostNotice() {
   // Try without event_id first, then with event_id: null as fallback
   let success = false;
   for (const payload of [
-    { custom_text: `<strong>${title}</strong><br>${msg}` },
-    { custom_text: `<strong>${title}</strong><br>${msg}`, event_id: null },
-    { custom_text: `<strong>${title}</strong><br>${msg}`, event_id: undefined },
+    { title: title, body: msg },
+    { title: title, body: msg, event_id: null },
+    { title: title, body: msg, event_id: undefined },
   ]) {
     try {
       await post('noticeboard', payload);
@@ -2059,7 +2059,7 @@ async function submitPostNotice() {
     // Last resort: show locally only (won't persist)
     const localNotice = {
       id: 'local-' + Date.now(),
-      custom_text: `<strong>${title}</strong><br>${msg}`,
+      title: title, body: msg,
       created_at: new Date().toISOString()
     };
     db.noticeboard.unshift(localNotice);
@@ -2098,7 +2098,7 @@ function showPostUpdate(eid) {
     </div>
     <div class="form-group" style="margin-bottom:1rem">
       <label>Custom announcement <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>
-      <input id="pu-custom" placeholder="e.g. Great turnout today, next week at Bray!" value="${existing&&existing.custom_text?existing.custom_text:''}" />
+      <input id="pu-custom" placeholder="e.g. Great turnout today, next week at Bray!" value="${existing&&existing.body?existing.body:''}" />
     </div>
     <button class="btn primary" onclick="saveNotice('${eid}','${existing?existing.id:''}')" style="width:100%">${existing?'Update post':'Post to home page'}</button>
   `;
@@ -2113,9 +2113,9 @@ async function saveNotice(eid, existingId) {
   const custom  = document.getElementById('pu-custom').value.trim() || null;
   try {
     if (existingId) {
-      await patch(`noticeboard?id=eq.${existingId}`, { closest_to_pin:ctp, birdies, custom_text:custom });
+      await patch(`noticeboard?id=eq.${existingId}`, { body: [ctp ? 'CTP: '+ctp : '', birdies.length ? '🐦 '+birdies.join(', ') : '', custom].filter(Boolean).join(' · ') || null });
     } else {
-      await post('noticeboard', { event_id:eid, closest_to_pin:ctp, birdies, custom_text:custom });
+      const ev2 = db.events.find(e=>e.id===eid); await post('noticeboard', { event_id:eid, title: ev2 ? ev2.course_name : 'Event', body: [ctp ? 'CTP: '+ctp : '', birdies.length ? '🐦 '+birdies.join(', ') : '', custom].filter(Boolean).join(' · ') || null });
     }
     toast('Update posted to home page!', 'success');
     closePostModal();
