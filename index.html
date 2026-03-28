@@ -623,44 +623,63 @@
 
   <!-- ADD ROUND -->
   <div id="add-round" class="section">
-    <div class="card">
+    <div class="card" style="padding-bottom:0.5rem">
       <div class="card-title">Record a round</div>
-      <div class="form-row" style="display:flex;flex-direction:column;gap:10px">
+      <div class="form-row" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
         <div class="form-group"><label>Event</label><select id="r-event" onchange="onEventSelect();checkDuplicateRound()"><option value="">Select event…</option></select></div>
         <div class="form-group"><label>Player</label><select id="r-player" onchange="updateRoundSummary();checkDuplicateRound()"><option value="">Select player…</option></select></div>
       </div>
+    </div>
 
-      <div id="holes-section">
-        <div class="hole-section-label" id="holes-title">Hole scores — 18 holes</div>
-        <div id="live-tally" style="display:none;background:#1a1a1a;border-radius:10px;padding:12px 16px;margin-bottom:12px">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
-            <div style="text-align:center">
-              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Points</div>
-              <div id="tally-pts" style="font-size:22px;font-weight:700;color:#FAC775;line-height:1">—</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Holes</div>
-              <div id="tally-holes" style="font-size:22px;font-weight:700;color:#fff;line-height:1">0</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Course Hcp</div>
-              <div id="tally-hcp" style="font-size:22px;font-weight:700;color:#fff;line-height:1">—</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">New Hcp</div>
-              <div id="tally-newhcp" style="font-size:22px;font-weight:700;color:#fff;line-height:1">—</div>
-            </div>
-          </div>
+    <!-- STICKY LIVE TALLY -->
+    <div id="live-tally" style="display:none;position:sticky;top:calc(60px + env(safe-area-inset-top,0px));z-index:40;background:rgba(10,20,10,0.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(250,199,117,0.18);padding:10px 16px;margin:0 -0px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;max-width:960px;margin:0 auto">
+        <div style="text-align:center">
+          <div style="font-size:9px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Points</div>
+          <div id="tally-pts" style="font-size:24px;font-weight:700;color:#FAC775;line-height:1">—</div>
         </div>
-        <div id="hole-inputs"></div>
+        <div style="text-align:center">
+          <div style="font-size:9px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Holes</div>
+          <div id="tally-holes" style="font-size:24px;font-weight:700;color:#fff;line-height:1">0</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Cse Hcp</div>
+          <div id="tally-hcp" style="font-size:24px;font-weight:700;color:#fff;line-height:1">—</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">New Hcp</div>
+          <div id="tally-newhcp" style="font-size:24px;font-weight:700;color:#fff;line-height:1">—</div>
+        </div>
       </div>
-      <div id="duplicate-warning" style="display:none;background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+    </div>
+
+    <div id="holes-section" style="margin-top:8px">
+      <div id="hole-inputs"></div>
+    </div>
+
+    <div class="card" style="margin-top:8px">
+      <div id="duplicate-warning" style="display:none;background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:10px;align-items:center;gap:8px">
         <span style="font-size:16px">⚠️</span>
         <span>A round has already been submitted for this player at this event. Contact David to make any changes.</span>
       </div>
       <div id="round-summary" class="summary-bar"></div>
       <div style="margin-top:1rem">
-        <button class="btn primary" id="btn-save-round" onclick="saveRound()">Save round</button>
+        <button class="btn primary" id="btn-save-round" onclick="showRoundPreview()" style="width:100%;font-size:16px;padding:14px">Review &amp; save round</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROUND PREVIEW / CONFIRM MODAL -->
+  <div class="modal-overlay" id="round-preview-modal" onclick="maybeCloseRoundPreview(event)">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-hdr">
+        <span class="modal-title">Confirm round</span>
+        <button class="btn sm" onclick="closeRoundPreview()">Cancel</button>
+      </div>
+      <div id="round-preview-body"></div>
+      <div style="margin-top:1.25rem;display:flex;gap:8px">
+        <button class="btn" onclick="closeRoundPreview()" style="flex:1">Edit</button>
+        <button class="btn primary" id="btn-confirm-save" onclick="saveRound()" style="flex:2;font-size:15px">Save round</button>
       </div>
     </div>
   </div>
@@ -1088,7 +1107,7 @@ function checkDuplicateRound() {
   const saveBtn = document.getElementById('btn-save-round');
   if (!warn) return;
   if (eid && pid && db.rounds.find(r=>r.event_id===eid && r.player_id===pid)) {
-    warn.style.display = 'block';
+    warn.style.display = 'flex';
     if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; }
   } else {
     warn.style.display = 'none';
@@ -1099,7 +1118,6 @@ function checkDuplicateRound() {
 const _holeScores = {};
 
 function buildHoleInputs(n) {
-  document.getElementById('holes-title').textContent = `Hole scores — ${n} holes`;
   const wrap = document.getElementById('hole-inputs');
   const eid = document.getElementById('r-event').value;
   const pid = document.getElementById('r-player').value;
@@ -1113,33 +1131,35 @@ function buildHoleInputs(n) {
   // Reset scores
   for (let i=1;i<=n;i++) _holeScores[i] = null;
 
-  const btnStyle = 'width:48px;height:48px;border-radius:10px;border:1px solid var(--border-strong);background:var(--bg-2);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center';
+  // Larger thumb-friendly buttons
+  const btnStyle = 'width:54px;height:58px;border-radius:12px;border:1px solid var(--border-strong);background:var(--bg-2);color:var(--text);font-size:30px;font-weight:300;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1';
 
   function makeCard(startH, endH, label) {
     const holes = Array.from({length: endH-startH+1}, (_,i)=>startH+i);
     const rows = holes.map(h => {
       const par = parVals[h-1]||4;
       const si  = siVals[h-1]||h;
-      return `<div style="display:flex;align-items:center;border-bottom:0.5px solid var(--border);padding:6px 8px;gap:6px">
-        <div style="font-size:11px;font-weight:700;color:var(--text-3);background:var(--bg-2);border-radius:6px;text-align:center;padding:4px 6px;min-width:24px">${h}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;color:var(--text-3)">Par ${par} · SI ${si}</div>
-          <div id="pts-h${h}" style="font-size:13px;font-weight:600;color:var(--text-3)">—</div>
+      return `<div id="hole-row-${h}" style="display:flex;align-items:center;border-bottom:0.5px solid var(--border);padding:8px 10px;gap:8px">
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:26px">
+          <div style="font-size:12px;font-weight:700;color:var(--text-3);background:var(--bg-2);border-radius:6px;text-align:center;padding:3px 6px;min-width:26px">${h}</div>
+          <div style="font-size:9px;color:var(--text-3);margin-top:2px">SI${si}</div>
         </div>
-        <button style="${btnStyle}" onclick="adjScore(${h},-1,${par},${si})">−</button>
-        <div id="h${h}-disp" style="width:36px;text-align:center;font-size:20px;font-weight:700;color:var(--text-3);flex-shrink:0">—</div>
-        <button style="${btnStyle}" onclick="adjScore(${h},1,${par},${si})">+</button>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:var(--text-3);font-weight:500">Par ${par}</div>
+          <div id="pts-h${h}" style="font-size:12px;font-weight:600;color:var(--text-3)">—</div>
+        </div>
+        <button style="${btnStyle}" onclick="adjScore(${h},-1,${par},${si})" aria-label="Minus">−</button>
+        <div id="h${h}-disp" style="width:40px;text-align:center;font-size:22px;font-weight:700;color:var(--text-3);flex-shrink:0;line-height:1">—</div>
+        <button style="${btnStyle}" onclick="adjScore(${h},1,${par},${si})" aria-label="Plus">+</button>
       </div>`;
     }).join('');
-    return `<div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border-strong)">
-      <div style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:8px 12px">${label}</div>
+    return `<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">
+      <div style="background:#1a1a1a;color:#FAC775;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:9px 12px">${label}</div>
       ${rows}
     </div>`;
   }
 
-  wrap.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
-    ${makeCard(1,9,'Front 9')}${makeCard(10,18,'Back 9')}
-  </div>`;
+  wrap.innerHTML = makeCard(1,9,'Front 9') + makeCard(10,18,'Back 9');
 }
 
 function adjScore(hole, delta, par, si) {
@@ -1152,6 +1172,12 @@ function adjScore(hole, delta, par, si) {
     disp.textContent = score;
     const diff = score - par;
     disp.style.color = diff <= -2 ? '#534AB7' : diff === -1 ? '#1D9E75' : diff === 0 ? 'var(--text)' : diff === 1 ? '#E24B4A' : '#A32D2D';
+  }
+  // Color the hole row background
+  const row = document.getElementById('hole-row-'+hole);
+  if (row) {
+    const diff = score - par;
+    row.style.background = diff <= -2 ? 'rgba(83,74,183,0.10)' : diff === -1 ? 'rgba(29,158,117,0.10)' : diff === 0 ? '' : diff === 1 ? 'rgba(226,75,74,0.07)' : 'rgba(163,45,45,0.10)';
   }
   // Always look up the current player's handicap fresh — never use stale baked-in value
   const pid = document.getElementById('r-player')?.value;
@@ -1605,6 +1631,115 @@ function updateRoundSummary() {
   }
 }
 
+function showRoundPreview() {
+  const eid = document.getElementById('r-event').value;
+  const pid = document.getElementById('r-player').value;
+  if (!eid) { toast('No event selected', 'error'); return; }
+  if (!pid) { toast('No player selected', 'error'); return; }
+  if (db.rounds.find(r=>r.event_id===eid&&r.player_id===pid)) { toast('Round already recorded for this player at this event', 'error'); return; }
+  const ev = db.events.find(e=>e.id===eid);
+  const pl = db.players.find(x=>x.id===pid);
+  if (!ev || !pl) { toast('Player or event not found', 'error'); return; }
+  const n = 18;
+  const parVals = getParValues(n, ev, pl);
+  const siVals  = getSIValues(n, ev, pl);
+  const hcpIdx  = parseFloat(pl.handicap_index) || 18;
+  const courseHcp = calcCourseHcp(hcpIdx);
+  const scores = [];
+  for (let i=1;i<=n;i++) scores.push(_holeScores[i]);
+  const filled = scores.filter(s=>s!==null).length;
+  if (filled < n) { toast(`Only ${filled} of ${n} holes scored — tap + or − on each hole`, 'error'); return; }
+  // Compute totals
+  let totalPts=0, totalGross=0;
+  const holePts = scores.map((s,i)=>{
+    if (s===null) return 0;
+    totalGross += s;
+    const p = calcStableford(s, parVals[i], getStrokeAllowance(courseHcp, siVals[i], n));
+    totalPts += p;
+    return p;
+  });
+  const eventRounds = db.rounds.filter(r=>r.event_id===eid);
+  const allPts = [...eventRounds.map(r=>r.stableford_points), totalPts].sort((a,b)=>b-a);
+  const position = allPts.indexOf(totalPts) + 1;
+  const newHcp = calcNewHcp(hcpIdx, totalPts, position);
+  const hcpChange = newHcp > hcpIdx ? `+${(newHcp-hcpIdx).toFixed(1)}` : newHcp < hcpIdx ? `−${(hcpIdx-newHcp).toFixed(1)}` : '±0';
+  const hcpColor  = newHcp < hcpIdx ? '#1D9E75' : newHcp > hcpIdx ? '#E24B4A' : '#888';
+  const ptsColors = ['#E24B4A','var(--text-3)','#1D9E75','#185FA5','#534AB7'];
+  // Build scorecard rows
+  function scorecardHalf(start, end, label) {
+    const rows = Array.from({length:end-start+1},(_,i)=>start+i).map(h=>{
+      const s = scores[h-1];
+      const par = parVals[h-1];
+      const pts = holePts[h-1];
+      const diff = s - par;
+      const rowBg = diff<=-2?'rgba(83,74,183,0.10)':diff===-1?'rgba(29,158,117,0.10)':diff===1?'rgba(226,75,74,0.07)':diff>=2?'rgba(163,45,45,0.10)':'';
+      const scoreColor = diff<=-2?'#534AB7':diff===-1?'#1D9E75':diff===0?'var(--text)':diff===1?'#E24B4A':'#A32D2D';
+      const ptsColor = ptsColors[Math.min(pts,4)]||'var(--text-3)';
+      return `<tr style="background:${rowBg}">
+        <td style="padding:6px 8px;font-size:12px;font-weight:600;color:var(--text-3);width:28px;text-align:center">${h}</td>
+        <td style="padding:6px 8px;font-size:12px;color:var(--text-2);text-align:center">${par}</td>
+        <td style="padding:6px 8px;font-size:14px;font-weight:700;color:${scoreColor};text-align:center">${s}</td>
+        <td style="padding:6px 8px;font-size:12px;font-weight:600;color:${ptsColor};text-align:center">${pts}pt</td>
+      </tr>`;
+    }).join('');
+    const halfPts  = Array.from({length:end-start+1},(_,i)=>holePts[start-1+i]).reduce((a,b)=>a+b,0);
+    const halfGross = scores.slice(start-1,end).reduce((a,b)=>a+(b||0),0);
+    return `<div style="margin-bottom:10px">
+      <div style="background:#1a1a1a;color:#FAC775;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:6px 10px;border-radius:8px 8px 0 0">${label}</div>
+      <table style="width:100%;border-collapse:collapse;background:var(--surface);border-radius:0 0 8px 8px;overflow:hidden;border:1px solid var(--border)">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="padding:5px 8px;font-size:10px;color:var(--text-3);font-weight:600;text-align:center">#</th>
+          <th style="padding:5px 8px;font-size:10px;color:var(--text-3);font-weight:600;text-align:center">Par</th>
+          <th style="padding:5px 8px;font-size:10px;color:var(--text-3);font-weight:600;text-align:center">Score</th>
+          <th style="padding:5px 8px;font-size:10px;color:var(--text-3);font-weight:600;text-align:center">Pts</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="border-top:1px solid var(--border);background:var(--bg-2)">
+          <td colspan="2" style="padding:6px 8px;font-size:11px;font-weight:600;color:var(--text-2)">${label} totals</td>
+          <td style="padding:6px 8px;font-size:12px;font-weight:700;text-align:center;color:var(--text)">${halfGross}</td>
+          <td style="padding:6px 8px;font-size:12px;font-weight:700;text-align:center;color:#1D9E75">${halfPts}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }
+  const body = document.getElementById('round-preview-body');
+  body.innerHTML = `
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">${pl.name}</div>
+      <div style="font-size:12px;color:var(--text-2)">${fmtDate(ev.event_date)} — ${ev.course_name}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total pts</div>
+        <div style="font-size:22px;font-weight:700;color:#FAC775">${totalPts}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Gross</div>
+        <div style="font-size:22px;font-weight:700;color:var(--text)">${totalGross}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Cse Hcp</div>
+        <div style="font-size:22px;font-weight:700;color:var(--text)">${courseHcp}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">New Hcp</div>
+        <div style="font-size:22px;font-weight:700;color:${hcpColor}">${newHcp}</div>
+        <div style="font-size:10px;color:${hcpColor}">${hcpChange}</div>
+      </div>
+    </div>
+    ${scorecardHalf(1,9,'Front 9')}
+    ${scorecardHalf(10,18,'Back 9')}
+    <p style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:center">Scores are pending verification before they count.</p>
+  `;
+  document.getElementById('round-preview-modal').classList.add('open');
+}
+function closeRoundPreview() {
+  document.getElementById('round-preview-modal').classList.remove('open');
+}
+function maybeCloseRoundPreview(e) {
+  if (e.target === document.getElementById('round-preview-modal')) closeRoundPreview();
+}
+
 async function saveRound() {
   const eid = document.getElementById('r-event').value;
   const pid = document.getElementById('r-player').value;
@@ -1632,22 +1767,25 @@ async function saveRound() {
     if (scores[i]!==null) totalPts += calcStableford(scores[i], parVals[i], getStrokeAllowance(courseHcp, siVals[i], n));
   }
   const gross = scores.reduce((a,b)=>a+(b||0),0);
-  // Work out position among all rounds for this event including this new one
   const eventRounds = db.rounds.filter(r=>r.event_id===eid);
   const allPts = [...eventRounds.map(r=>r.stableford_points), totalPts].sort((a,b)=>b-a);
   const position = allPts.indexOf(totalPts) + 1;
   const newHcp = calcNewHcp(hcpIdx, totalPts, position);
 
-  const btn = document.getElementById('btn-save-round');
-  btn.disabled=true; btn.textContent='Saving…';
+  const btn = document.getElementById('btn-confirm-save');
+  const btnOld = document.getElementById('btn-save-round');
+  if (btn) { btn.disabled=true; btn.textContent='Saving…'; }
+  if (btnOld) { btnOld.disabled=true; }
   try {
     await post('rounds',{ event_id:eid, player_id:pid, hole_scores:scores, par_values:parVals, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_before:hcpIdx, handicap_after:newHcp, league_points:0 });
+    closeRoundPreview();
     toast(`Saved! ${totalPts} stableford pts · Pending verification`, 'success');
     for (let i=1; i<=n; i++) { _holeScores[i] = null; }
     document.getElementById('round-summary').classList.remove('show');
     await loadAll(); renderAll();
   } catch(e) { toast('Error saving: '+e.message, 'error'); }
-  btn.disabled=false; btn.textContent='Save round';
+  if (btn) { btn.disabled=false; btn.textContent='Save round'; }
+  if (btnOld) { btnOld.disabled=false; }
 }
 
 async function addPlayer() {
