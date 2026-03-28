@@ -2033,15 +2033,39 @@ async function submitPostNotice() {
   const msg   = document.getElementById('pn-message').value.trim();
   if (!title || !msg) { document.getElementById('pn-error').style.display = 'block'; return; }
   document.getElementById('pn-error').style.display = 'none';
-  try {
-    await post('noticeboard', { custom_text: `<strong>${title}</strong><br>${msg}` });
+
+  // Try without event_id first, then with event_id: null as fallback
+  let success = false;
+  for (const payload of [
+    { custom_text: `<strong>${title}</strong><br>${msg}` },
+    { custom_text: `<strong>${title}</strong><br>${msg}`, event_id: null },
+    { custom_text: `<strong>${title}</strong><br>${msg}`, event_id: undefined },
+  ]) {
+    try {
+      await post('noticeboard', payload);
+      success = true;
+      break;
+    } catch(e) {
+      // try next payload variant
+    }
+  }
+
+  if (success) {
     closePostNoticeModal();
     db.noticeboard = (await safeGet('noticeboard?order=created_at.desc')) || [];
     renderNoticeboard();
     toast('Notice posted!', 'success');
-  } catch(e) {
-    document.getElementById('pn-error').textContent = 'Failed to post — ' + e.message;
-    document.getElementById('pn-error').style.display = 'block';
+  } else {
+    // Last resort: show locally only (won't persist)
+    const localNotice = {
+      id: 'local-' + Date.now(),
+      custom_text: `<strong>${title}</strong><br>${msg}`,
+      created_at: new Date().toISOString()
+    };
+    db.noticeboard.unshift(localNotice);
+    closePostNoticeModal();
+    renderNoticeboard();
+    toast('Notice shown locally — please make event_id nullable in Supabase to persist.', '');
   }
 }
 
