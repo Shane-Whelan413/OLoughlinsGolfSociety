@@ -2053,7 +2053,7 @@ async function submitPostNotice() {
   if (success) {
     closePostNoticeModal();
     db.noticeboard = (await safeGet('noticeboard?order=created_at.desc')) || [];
-    renderNoticeboard();
+    renderHome();
     toast('Notice posted!', 'success');
   } else {
     // Last resort: show locally only (won't persist)
@@ -2064,7 +2064,7 @@ async function submitPostNotice() {
     };
     db.noticeboard.unshift(localNotice);
     closePostNoticeModal();
-    renderNoticeboard();
+    renderHome();
     toast('Notice shown locally — please make event_id nullable in Supabase to persist.', '');
   }
 }
