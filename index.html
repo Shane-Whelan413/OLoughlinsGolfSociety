@@ -2033,11 +2033,16 @@ async function submitPostNotice() {
   const msg   = document.getElementById('pn-message').value.trim();
   if (!title || !msg) { document.getElementById('pn-error').style.display = 'block'; return; }
   document.getElementById('pn-error').style.display = 'none';
-  await post('noticeboard', { custom_text: `<strong>${title}</strong><br>${msg}`, event_id: null });
-  closePostNoticeModal();
-  db.noticeboard = (await safeGet('noticeboard?order=created_at.desc')) || [];
-  renderNoticeboard();
-  toast('Notice posted!', 'success');
+  try {
+    await post('noticeboard', { custom_text: `<strong>${title}</strong><br>${msg}` });
+    closePostNoticeModal();
+    db.noticeboard = (await safeGet('noticeboard?order=created_at.desc')) || [];
+    renderNoticeboard();
+    toast('Notice posted!', 'success');
+  } catch(e) {
+    document.getElementById('pn-error').textContent = 'Failed to post — ' + e.message;
+    document.getElementById('pn-error').style.display = 'block';
+  }
 }
 
 
