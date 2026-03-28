@@ -533,6 +533,12 @@
         </button>
       </div>
     </div>
+    <div id="admin-post-notice-btn" style="display:none;margin-bottom:1rem">
+      <button onclick="showPostNoticeModal()" style="width:100%;padding:12px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg);color:var(--text);border:1.5px dashed var(--border-strong);border-radius:10px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 11V13h2l6-6-2-2-6 6z"/><path d="M12.5 3.5l0 0a1.2 1.2 0 0 1 0 1.7L11 6.7 9.3 5l1.5-1.5a1.2 1.2 0 0 1 1.7 0z"/></svg>
+        Post a notice
+      </button>
+    </div>
     <div id="noticeboard-feed"><div class="empty" style="padding:3rem">Loading updates…</div></div>
   </div>
 
@@ -708,7 +714,27 @@
   </div>
 </div>
 
-<!-- CHANGE PIN MODAL -->
+<!-- POST NOTICE MODAL -->
+<div class="modal-overlay" id="post-notice-modal" onclick="maybeClosePostNoticeModal(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr">
+      <span class="modal-title">Post a notice</span>
+      <button class="btn sm" onclick="closePostNoticeModal()">Close</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Title</label>
+      <input type="text" id="pn-title" placeholder="e.g. Event cancelled" maxlength="80" />
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Message</label>
+      <textarea id="pn-message" rows="4" placeholder="e.g. Due to course closure, this Saturday's outing has been postponed. New date TBC." style="width:100%;box-sizing:border-box;resize:vertical;font-family:'DM Sans',sans-serif;font-size:14px;padding:10px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--bg);color:var(--text)"></textarea>
+    </div>
+    <div id="pn-error" style="color:#A32D2D;font-size:12px;margin-bottom:8px;display:none">Please add a title and message.</div>
+    <button class="btn primary" onclick="submitPostNotice()" style="width:100%">Post notice</button>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="change-pin-modal" onclick="maybeCloseChangePinModal(event)">
   <div class="modal" style="max-width:360px">
     <div class="modal-hdr">
@@ -1934,6 +1960,17 @@ function renderHome() {
     return;
   }
   feed.innerHTML = db.noticeboard.map(n => {
+    // Standalone admin notice (no event attached)
+    if (!n.event_id) {
+      return `<div class="card" style="margin-bottom:1rem;border-left:3px solid #FAC775">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <span class="badge" style="background:#FAC775;color:#1a1a1a">📢 Notice</span>
+          <span style="font-size:11px;color:var(--text-3)">${fmtDate(n.created_at ? n.created_at.slice(0,10) : '')}</span>
+        </div>
+        <div style="font-size:14px;color:var(--text);line-height:1.5">${n.custom_text || ''}</div>
+        ${isAdmin ? `<div style="margin-top:12px;text-align:right"><button class="btn sm danger" onclick="deleteNotice('${n.id}')">Remove</button></div>` : ''}
+      </div>`;
+    }
     const ev = db.events.find(e=>e.id===n.event_id);
     const eventRounds = db.rounds.filter(r=>r.event_id===n.event_id);
     const ranked = assignLeaguePts(eventRounds.map(r=>({...r}))).slice(0,3);
@@ -1981,8 +2018,28 @@ function showAdminLogin() {
 
 function closeAdminModal() { document.getElementById('admin-modal').classList.remove('open'); }
 function maybeCloseAdminModal(e) { if(e.target===document.getElementById('admin-modal')) closeAdminModal(); }
-function closePostModal() { document.getElementById('post-update-modal').classList.remove('open'); }
-function maybeClosePostModal(e) { if(e.target===document.getElementById('post-update-modal')) closePostModal(); }
+function closePostNoticeModal() { document.getElementById('post-notice-modal').classList.remove('open'); }
+function maybeClosePostNoticeModal(e) { if(e.target===document.getElementById('post-notice-modal')) closePostNoticeModal(); }
+function showPostNoticeModal() {
+  if (!isAdmin) return;
+  document.getElementById('pn-title').value = '';
+  document.getElementById('pn-message').value = '';
+  document.getElementById('pn-error').style.display = 'none';
+  document.getElementById('post-notice-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('pn-title').focus(), 100);
+}
+async function submitPostNotice() {
+  const title = document.getElementById('pn-title').value.trim();
+  const msg   = document.getElementById('pn-message').value.trim();
+  if (!title || !msg) { document.getElementById('pn-error').style.display = 'block'; return; }
+  document.getElementById('pn-error').style.display = 'none';
+  await post('noticeboard', { custom_text: `<strong>${title}</strong><br>${msg}`, event_id: null });
+  closePostNoticeModal();
+  db.noticeboard = (await safeGet('noticeboard?order=created_at.desc')) || [];
+  renderNoticeboard();
+  toast('Notice posted!', 'success');
+}
+
 
 function showPostUpdate(eid) {
   if (!isAdmin) { showAdminLogin(); return; }
@@ -2430,16 +2487,6 @@ function renderProfile() {
       </div>
     </div>
 
-    ${outingEvents.length ? `
-    <div class="card" style="margin-bottom:1rem">
-      <div class="card-title">Outings ranking</div>
-      <div class="stat" style="background:${outingPosColor};border-radius:var(--radius)">
-        <div class="stat-label" style="color:${outingPosText}">Outing rank</div>
-        <div class="stat-value" style="color:${outingPosText}">${outingPosLabel}</div>
-        <div style="font-size:11px;color:${outingPosText};margin-top:2px">${myOutingPts} league pts from ${myOutingRounds.length} outing${myOutingRounds.length!==1?'s':''}</div>
-      </div>
-    </div>` : ''}
-
     ${myRounds.length > 1 ? `
     <div class="card" style="margin-bottom:1rem">
       <div class="card-title">Handicap progression</div>
@@ -2718,6 +2765,8 @@ function updateUIForRole() {
   }
   const adminLinks = document.getElementById('admin-quick-links');
   if (adminLinks) adminLinks.style.display = isAdmin ? '' : 'none';
+  const postNoticeBtn = document.getElementById('admin-post-notice-btn');
+  if (postNoticeBtn) postNoticeBtn.style.display = isAdmin ? '' : 'none';
   const addPlayerCard = document.getElementById('add-player-card');
   if (addPlayerCard) addPlayerCard.style.display = isAdmin ? '' : 'none';
   const createEventCard = document.getElementById('create-event-card');
