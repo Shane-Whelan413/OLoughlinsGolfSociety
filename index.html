@@ -429,6 +429,15 @@
   .login-name-grid::-webkit-scrollbar { width: 4px; }
   .login-name-grid::-webkit-scrollbar-track { background: transparent; }
   .login-name-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #FAC775; background: transparent; transition: background 0.1s; }
+  .pin-dot.filled { background: #FAC775; }
+  .num-key { height: 52px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); font-size: 20px; font-weight: 500; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: 'DM Sans', sans-serif; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; transition: background 0.08s, transform 0.08s; }
+  .num-key:active { background: rgba(250,199,117,0.18); border-color: #FAC775; transform: scale(0.93); }
+  .num-del { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); font-size: 16px; }
+  .num-go { background: #085041; color: #FAC775; border-color: #085041; font-size: 13px; font-weight: 700; }
+  .num-go:active { background: #0d6b54; }
+  .login-pin-avatar { width: 60px; height: 60px; border-radius: 50%; background: #085041; color: #FAC775; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 8px auto 12px; }
+  .login-pin-greeting { font-size: 18px; font-weight: 700; color: #fff; text-align: center; margin-bottom: 3px; }
   .locked-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; text-align: center; color: var(--text-2); }
   .locked-tab svg { margin-bottom: 1rem; opacity: 0.4; }
 
@@ -458,13 +467,35 @@
     </div>
     <!-- PIN section (shown after name selected) -->
     <div id="login-pin-section" style="display:none">
-      <div class="form-group" style="margin-bottom:12px;text-align:left">
-        <label id="login-pin-label" style="color:rgba(255,255,255,0.7);font-size:13px">Enter your PIN</label>
-        <input type="password" id="login-pin-input" placeholder="PIN" onkeydown="if(event.key==='Enter')submitPin()" style="text-align:center;letter-spacing:4px;font-size:18px;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:#fff" />
+      <div class="login-pin-avatar" id="login-pin-avatar">??</div>
+      <div class="login-pin-greeting" id="login-pin-greeting">Welcome!</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:14px">Enter your PIN</div>
+      <!-- PIN dots -->
+      <div style="display:flex;gap:14px;justify-content:center;margin-bottom:18px">
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+        <div class="pin-dot" id="pd4"></div>
       </div>
-      <button class="btn primary" onclick="submitPin()" style="width:100%;margin-bottom:8px;background:#FAC775;border-color:#FAC775;color:#1a1a1a;font-weight:600">Login</button>
-      <button class="btn" onclick="backToNames()" style="width:100%;font-size:12px;margin-bottom:8px;border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.6)">← Back</button>
-      <div id="login-pin-error" style="color:#ff8a80;font-size:12px;margin-top:4px;display:none">Incorrect PIN — try your first name if you haven't set one yet</div>
+      <div id="login-pin-error" style="color:#ff8a80;font-size:12px;text-align:center;margin-bottom:8px;display:none">Incorrect PIN — try your first name if you haven't set one yet</div>
+      <!-- Numpad -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(1)" onclick="numKey(1)">1</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(2)" onclick="numKey(2)">2</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(3)" onclick="numKey(3)">3</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(4)" onclick="numKey(4)">4</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(5)" onclick="numKey(5)">5</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(6)" onclick="numKey(6)">6</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(7)" onclick="numKey(7)">7</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(8)" onclick="numKey(8)">8</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(9)" onclick="numKey(9)">9</button>
+        <button class="num-key num-del" ontouchstart="event.preventDefault();numKey('del')" onclick="numKey('del')">⌫</button>
+        <button class="num-key" ontouchstart="event.preventDefault();numKey(0)" onclick="numKey(0)">0</button>
+        <button class="num-key num-go" ontouchstart="event.preventDefault();submitPin()" onclick="submitPin()">Login</button>
+      </div>
+      <div style="text-align:center;margin-top:12px">
+        <button onclick="backToNames()" style="font-size:12px;color:rgba(255,255,255,0.5);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif">← Back</button>
+      </div>
     </div>
     <div style="margin-top:1rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:1rem">
       <button class="btn" onclick="showAdminLoginFromScreen()" style="width:100%;font-size:12px;color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.08)">Admin login</button>
@@ -3170,31 +3201,51 @@ function loginAsViewer() {
 }
 
 let selectedPlayerId = null;
+let pinBuffer = '';
+
+function numKey(val) {
+  if (val === 'del') {
+    pinBuffer = pinBuffer.slice(0,-1);
+  } else {
+    if (pinBuffer.length >= 4) return;
+    pinBuffer += val;
+  }
+  updatePinDots();
+}
+
+function updatePinDots() {
+  [1,2,3,4].forEach(i => {
+    const d = document.getElementById('pd'+i);
+    if (d) d.classList.toggle('filled', i <= pinBuffer.length);
+  });
+}
+
 function selectPlayer(pid) {
   selectedPlayerId = pid;
   const p = db.players.find(x=>x.id===pid);
-  const hasPin = p && p.pin;
-  document.getElementById('login-subtitle').textContent = `Hi ${p.name.split(' ')[0]}! Enter your PIN`;
-  document.getElementById('login-pin-label').textContent = hasPin ? 'Enter your PIN' : 'Enter your PIN (first name until you set one)';
+  pinBuffer = '';
+  updatePinDots();
+  const avEl = document.getElementById('login-pin-avatar');
+  if (avEl) avEl.textContent = initials(p.name);
+  document.getElementById('login-pin-greeting').textContent = `Welcome, ${p.name.split(' ')[0]}`;
   document.getElementById('login-pin-section').style.display = 'block';
   document.getElementById('login-name-section').style.display = 'none';
-  document.getElementById('login-pin-input').value = '';
   document.getElementById('login-pin-error').style.display = 'none';
-  setTimeout(()=>document.getElementById('login-pin-input').focus(), 100);
 }
 
 function backToNames() {
   document.getElementById('login-pin-section').style.display = 'none';
   document.getElementById('login-name-section').style.display = '';
   document.getElementById('login-subtitle').textContent = 'Select your name to continue';
+  pinBuffer = '';
+  updatePinDots();
 }
 
 function submitPin() {
-  const pin = document.getElementById('login-pin-input').value.trim();
   const p = db.players.find(x=>x.id===selectedPlayerId);
   if (!p) return;
   const storedPin = p.pin || p.name.split(' ')[0];
-  if (pin.toLowerCase() === storedPin.toLowerCase()) {
+  if (pinBuffer.toLowerCase() === storedPin.toLowerCase()) {
     const role = p.is_admin ? 'admin' : 'member';
     currentUser = { role, playerId: p.id, name: p.name };
     isAdmin = role === 'admin';
@@ -3203,6 +3254,8 @@ function submitPin() {
     updateUIForRole();
     toast(`Welcome ${p.name.split(' ')[0]}${role==='admin'?' (Admin)':''}!`, 'success');
   } else {
+    pinBuffer = '';
+    updatePinDots();
     document.getElementById('login-pin-error').style.display = 'block';
   }
 }
