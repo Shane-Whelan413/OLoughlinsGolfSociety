@@ -3271,7 +3271,8 @@ function checkAdminPw() {
   const pw = document.getElementById('admin-pw-input').value;
   if (pw === ADMIN_PW) {
     isAdmin = true;
-    currentUser = { role: 'admin' };
+    const adminPlayer = db.players.find(p => p.is_admin);
+    currentUser = { role: 'admin', playerId: adminPlayer ? adminPlayer.id : null, name: adminPlayer ? adminPlayer.name : null };
     storeSession(currentUser);
     document.getElementById('admin-modal').classList.remove('open');
     hideLoginScreen();
