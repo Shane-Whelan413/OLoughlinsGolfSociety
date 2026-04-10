@@ -140,7 +140,7 @@
   .nav-btn.fab-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
   /* Content padding for bottom nav and topbar */
-  .content { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.5rem 140px; overflow-x: hidden; height: calc(100vh - 60px - env(safe-area-inset-top, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .content { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.5rem 140px; padding-top: calc(1.5rem + 60px + env(safe-area-inset-top, 0px)); overflow-x: hidden; height: calc(100vh - env(safe-area-inset-top, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
   /* Toasts above bottom nav */
   .toasts { bottom: 100px; }
