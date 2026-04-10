@@ -1184,8 +1184,18 @@ function buildHoleInputs(n) {
   const hcp = pl ? parseFloat(pl.handicap_index) : 18;
   const courseHcp = calcCourseHcp(hcp);
 
-  // Reset scores
-  for (let i=1;i<=n;i++) _holeScores[i] = null;
+  // Restore cached scores for this player+event combo, or reset
+  const _cacheKey = 'ol_scores_' + (eid||'') + '_' + (pid||'');
+  try {
+    const cached = JSON.parse(localStorage.getItem(_cacheKey) || 'null');
+    if (cached && typeof cached === 'object') {
+      for (let i=1;i<=n;i++) _holeScores[i] = cached[i] !== undefined ? cached[i] : null;
+    } else {
+      for (let i=1;i<=n;i++) _holeScores[i] = null;
+    }
+  } catch(e) {
+    for (let i=1;i<=n;i++) _holeScores[i] = null;
+  }
 
   // Larger thumb-friendly buttons
   const btnStyle = 'width:54px;height:58px;border-radius:12px;border:1px solid var(--border-strong);background:var(--bg-2);color:var(--text);font-size:30px;font-weight:300;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1';
@@ -1215,10 +1225,35 @@ function buildHoleInputs(n) {
     </div>`;
   }
 
-  wrap.innerHTML = makeCard(1,9,'Front 9') + makeCard(10,18,'Back 9');
+  wrap.innerHTML = `
+    <div style="margin-bottom:8px">
+      <div class="nine-tabs">
+        <button class="nine-tab active" id="tab-front" onclick="switchNine('front')">Front 9</button>
+        <button class="nine-tab" id="tab-back" onclick="switchNine('back')">Back 9</button>
+      </div>
+    </div>
+    <div class="nine-panel active" id="panel-front">${makeCard(1,9,'Front 9')}</div>
+    <div class="nine-panel" id="panel-back">${makeCard(10,18,'Back 9')}</div>
+  `;
+  // Restore visual state for any cached scores
+  for (let i=1;i<=n;i++) {
+    if (_holeScores[i] !== null) {
+      const par = parVals[i-1]||4;
+      const si  = siVals[i-1]||i;
+      adjScore(i, 0, par, si); // delta=0 just re-renders the display
+    }
+  }
+}
+
+function switchNine(which) {
+  document.getElementById('tab-front').classList.toggle('active', which === 'front');
+  document.getElementById('tab-back').classList.toggle('active', which === 'back');
+  document.getElementById('panel-front').classList.toggle('active', which === 'front');
+  document.getElementById('panel-back').classList.toggle('active', which === 'back');
 }
 
 function adjScore(hole, delta, par, si) {
+  if (delta === 0 && _holeScores[hole] === null) return; // nothing to render
   if (_holeScores[hole] === null) _holeScores[hole] = par;
   _holeScores[hole] = Math.max(1, Math.min(15, _holeScores[hole] + delta));
   const score = _holeScores[hole];
@@ -1228,6 +1263,9 @@ function adjScore(hole, delta, par, si) {
     disp.textContent = score;
     const diff = score - par;
     disp.style.color = diff <= -2 ? '#534AB7' : diff === -1 ? '#1D9E75' : diff === 0 ? 'var(--text)' : diff === 1 ? '#E24B4A' : '#A32D2D';
+    disp.classList.remove('sc-pulse');
+    void disp.offsetWidth; // reflow to restart animation
+    disp.classList.add('sc-pulse');
   }
   // Color the hole row background
   const row = document.getElementById('hole-row-'+hole);
@@ -1249,6 +1287,14 @@ function adjScore(hole, delta, par, si) {
     ptEl.style.color = ptsColors[Math.min(pts,4)]||'var(--text-3)';
   }
   updateRoundSummary();
+  // Cache scores to localStorage so they survive modal close/reopen
+  try {
+    const pid2 = document.getElementById('r-player')?.value;
+    const eid2 = document.getElementById('r-event')?.value;
+    if (pid2 && eid2) {
+      localStorage.setItem('ol_scores_' + eid2 + '_' + pid2, JSON.stringify(_holeScores));
+    }
+  } catch(e) {}
 }
 
 function updateHolePts(hole) {} // kept for compatibility
@@ -1837,6 +1883,12 @@ async function saveRound() {
     closeRoundPreview();
     toast(`Saved! ${totalPts} stableford pts · Pending verification`, 'success');
     for (let i=1; i<=n; i++) { _holeScores[i] = null; }
+    // Clear cached scores for this round
+    try {
+      const pid3 = document.getElementById('r-player')?.value;
+      const eid3 = document.getElementById('r-event')?.value;
+      if (pid3 && eid3) localStorage.removeItem('ol_scores_' + eid3 + '_' + pid3);
+    } catch(e) {}
     document.getElementById('round-summary').classList.remove('show');
     await loadAll(); renderAll();
   } catch(e) { toast('Error saving: '+e.message, 'error'); }
