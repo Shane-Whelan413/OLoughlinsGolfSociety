@@ -1196,13 +1196,13 @@ function buildHoleInputs(n) {
       const par = parVals[h-1]||4;
       const si  = siVals[h-1]||h;
       return `<div id="hole-row-${h}" style="display:flex;align-items:center;border-bottom:0.5px solid var(--border);padding:8px 10px;gap:8px">
-        <div style="display:flex;flex-direction:column;align-items:center;min-width:26px">
-          <div style="font-size:12px;font-weight:700;color:var(--text-3);background:var(--bg-2);border-radius:6px;text-align:center;padding:3px 6px;min-width:26px">${h}</div>
-          <div style="font-size:9px;color:var(--text-3);margin-top:2px">SI${si}</div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:30px">
+          <div style="font-size:14px;font-weight:700;color:var(--text-3);background:var(--bg-2);border-radius:6px;text-align:center;padding:3px 7px;min-width:30px">${h}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">SI${si}</div>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;color:var(--text-3);font-weight:500">Par ${par}</div>
-          <div id="pts-h${h}" style="font-size:12px;font-weight:600;color:var(--text-3)">—</div>
+          <div style="font-size:14px;color:var(--text-3);font-weight:500">Par ${par}</div>
+          <div id="pts-h${h}" style="font-size:14px;font-weight:600;color:var(--text-3)">—</div>
         </div>
         <button style="${btnStyle}" onclick="adjScore(${h},-1,${par},${si})" aria-label="Minus">−</button>
         <div id="h${h}-disp" style="width:40px;text-align:center;font-size:22px;font-weight:700;color:var(--text-3);flex-shrink:0;line-height:1">—</div>
