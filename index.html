@@ -1047,9 +1047,9 @@ function renderLeaderboard() {
   document.getElementById('s-remaining').textContent = Math.max(0, outingsTotal - eventsPlayed);
 
   document.getElementById('pts-bar').innerHTML =
-    [20,19,18,17,16,15,14,13,12,11,10,9,8,7,6].map((p,i)=>
-      `<span class="pts-pip ${i<3?'hi':''}">${i+1}${i===0?'st':i===1?'nd':i===2?'rd':'th'}=${p}</span>`
-    ).join('') + `<span class="pts-pip">rest = 6</span>`;
+    [[1,15],[2,12],[3,9],[4,6],[5,3]].map(([pos,pts])=>
+      `<span class="pts-pip ${pos<=3?'hi':''}">${pos}${pos===1?'st':pos===2?'nd':pos===3?'rd':'th'}=${pts}</span>`
+    ).join('') + `<span class="pts-pip">6th+ = 0</span>`;
 
   if (!rows.length) { document.getElementById('lb-table').innerHTML='<div class="empty">No players yet — add some in the Players tab</div>'; return; }
   document.getElementById('lb-table').innerHTML = rows.map((p,i)=>{
@@ -3214,13 +3214,13 @@ function toast(msg, type='') {
 }
 
 function getStoredSession() {
-  try { return JSON.parse(localStorage.getItem('bhgs_session')||'null'); } catch(e){ return null; }
+  try { return JSON.parse(localStorage.getItem('ol_session')||'null'); } catch(e){ return null; }
 }
 function storeSession(s) {
-  try { localStorage.setItem('bhgs_session', JSON.stringify(s)); } catch(e){}
+  try { localStorage.setItem('ol_session', JSON.stringify(s)); } catch(e){}
 }
 function clearSession() {
-  try { localStorage.removeItem('bhgs_session'); } catch(e){}
+  try { localStorage.removeItem('ol_session'); } catch(e){}
 }
 
 let currentUser = null;
@@ -3476,6 +3476,11 @@ async function init() {
     const session = getStoredSession();
     if (session) {
       if (session.role === 'admin') {
+        // Ensure admin session has playerId (may be missing from old sessions)
+        if (!session.playerId) {
+          const adminPlayer = db.players.find(p => p.is_admin);
+          if (adminPlayer) { session.playerId = adminPlayer.id; session.name = adminPlayer.name; }
+        }
         currentUser = session; isAdmin = true;
         hideLoginScreen(); updateUIForRole();
       } else if (session.role === 'member') {
