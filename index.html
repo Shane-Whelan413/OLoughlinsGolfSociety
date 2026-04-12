@@ -712,6 +712,11 @@
       </div>
     </div>
 
+    <div id="event-si-display" style="display:none;margin:0 0 8px;padding:0 4px">
+      <div id="event-par-readout" style="display:none;flex-wrap:wrap;gap:2px;margin-bottom:6px"></div>
+      <div id="event-si-readout" style="display:none;flex-wrap:wrap;gap:2px"></div>
+    </div>
+
     <div id="holes-section" style="margin-top:8px">
       <div id="hole-inputs"></div>
     </div>
@@ -1158,7 +1163,12 @@ function renderAddRound() {
   const re = document.getElementById('r-event');
   const isMember = currentUser && currentUser.role === 'member';
   if (isMember) {
-    rp.innerHTML = db.players.filter(p=>p.id===currentUser.playerId).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    let memberPlayers = db.players.filter(p=>p.id===currentUser.playerId);
+    if (!memberPlayers.length && currentUser.name) {
+      const needle = currentUser.name.trim().toLowerCase();
+      memberPlayers = db.players.filter(p=>p.name.trim().toLowerCase()===needle);
+    }
+    rp.innerHTML = memberPlayers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
     rp.disabled = true;
   } else {
     rp.disabled = false;
@@ -2944,9 +2954,10 @@ function renderProfile() {
     const adminPlayer = db.players.find(p => p.is_admin);
     if (adminPlayer) pid = adminPlayer.id;
   }
-  // Fallback: try matching by name
+  // Fallback: try matching by name (case-insensitive, trimmed)
   if (!pid && currentUser.name) {
-    const namedPlayer = db.players.find(p => p.name === currentUser.name);
+    const needle = currentUser.name.trim().toLowerCase();
+    const namedPlayer = db.players.find(p => p.name.trim().toLowerCase() === needle);
     if (namedPlayer) pid = namedPlayer.id;
   }
   if (!pid) {
