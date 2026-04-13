@@ -2728,11 +2728,14 @@ function showPlayerProfile(pid) {
   if (p) viewPlayerRounds(pid, p.name);
 }
 
-function scorecardRow(holes, vals, label, bold) {
+function scorecardRow(holes, vals, label, bold, showTotal = true) {
   const cellStyle = `style="font-size:11px;text-align:center;padding:4px 2px;${bold?'font-weight:700;':''}border-right:1px solid var(--border)"`;
   const cells = holes.map(i => `<td ${cellStyle}>${vals[i] !== undefined && vals[i] !== null ? vals[i] : '—'}</td>`).join('');
   const total = holes.reduce((s,i) => s + (parseFloat(vals[i])||0), 0);
-  return `<tr><td style="font-size:10px;color:var(--text-3);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--border);font-weight:600">${label}</td>${cells}<td style="font-size:11px;font-weight:700;text-align:center;padding:4px 4px">${total||'—'}</td></tr>`;
+  const totalCell = showTotal
+    ? `<td style="font-size:11px;font-weight:700;text-align:center;padding:4px 4px">${total||'—'}</td>`
+    : `<td style="padding:4px 4px"></td>`;
+  return `<tr><td style="font-size:10px;color:var(--text-3);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--border);font-weight:600">${label}</td>${cells}${totalCell}</tr>`;
 }
 
 function buildScorecard(r, ev, pl) {
@@ -2764,7 +2767,7 @@ function buildScorecard(r, ev, pl) {
       <thead><tr>${labelH}${holeNums(holes)}${totH}</tr></thead>
       <tbody>
         ${scorecardRow(holes, parVals, 'Par', false)}
-        ${scorecardRow(holes, siVals,  'SI',  false)}
+        ${scorecardRow(holes, siVals,  'SI',  false, false)}
         ${scorecardRow(holes, scores,  'Score', true)}
         <tr><td style="font-size:10px;color:var(--text-3);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--border);font-weight:600">Pts</td>${ptsCells(holes)}${ptsTot(holes)}</tr>
       </tbody>
