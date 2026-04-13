@@ -2745,35 +2745,96 @@ function buildScorecard(r, ev, pl) {
   const siVals  = getSIValues(n, ev, pl);
   const courseHcp = calcCourseHcp(parseFloat(r.handicap_before)||0);
   const scores = r.hole_scores;
-  // Stableford per hole
   const pts = scores.map((s,i) => s !== null && s !== undefined ? calcStableford(s, parVals[i], getStrokeAllowance(courseHcp, siVals[i], n)) : null);
-  const front = [0,1,2,3,4,5,6,7,8];
-  const back  = [9,10,11,12,13,14,15,16,17];
-  const holeNums = n => n.map(i=>`<th style="font-size:10px;text-align:center;padding:4px 2px;color:var(--text-3);border-right:1px solid var(--border)">${i+1}</th>`).join('');
-  const totH = `<th style="font-size:10px;text-align:center;padding:4px 4px;color:var(--text-3)">Tot</th>`;
-  const labelH = `<th style="font-size:10px;padding:4px 6px;color:var(--text-3);border-right:1px solid var(--border)"></th>`;
-  const tableStyle = `style="width:100%;border-collapse:collapse;background:var(--surface);border-radius:var(--radius);overflow:hidden;margin-bottom:8px"`;
 
-  // colour stableford cells
-  const ptsCells = (holes) => holes.map(i => {
-    const p = pts[i];
-    const bg = p === null ? '' : p >= 4 ? 'background:#1D9E75;color:#fff' : p === 3 ? 'background:#5BC49A;color:#fff' : p === 2 ? '' : p <= 1 ? 'background:#F7C1C1;color:#A32D2D' : '';
-    return `<td style="font-size:11px;text-align:center;padding:4px 2px;${bg};border-right:1px solid var(--border);font-weight:600">${p !== null ? p : '—'}</td>`;
-  }).join('');
-  const ptsTot = (holes) => { const t = holes.reduce((s,i)=>s+(pts[i]||0),0); return `<td style="font-size:11px;font-weight:700;text-align:center;padding:4px 4px">${t}</td>`; };
+  const ptsColor = p => p >= 4 ? '#1D9E75' : p === 3 ? '#5BC49A' : p === 2 ? 'var(--text)' : '#E24B4A';
+  const ptsBg    = p => p >= 4 ? 'rgba(29,158,117,0.15)' : p === 3 ? 'rgba(91,196,154,0.12)' : p === 2 ? 'transparent' : 'rgba(226,75,74,0.10)';
+  const scoreDiff = (s, par) => {
+    const d = s - par;
+    return d <= -2 ? '#534AB7' : d === -1 ? '#1D9E75' : d === 0 ? 'var(--text-2)' : d === 1 ? '#E24B4A' : '#A32D2D';
+  };
 
-  const section = (holes) => `
-    <table ${tableStyle}>
-      <thead><tr>${labelH}${holeNums(holes)}${totH}</tr></thead>
-      <tbody>
-        ${scorecardRow(holes, parVals, 'Par', false)}
-        ${scorecardRow(holes, siVals,  'SI',  false, false)}
-        ${scorecardRow(holes, scores,  'Score', true)}
-        <tr><td style="font-size:10px;color:var(--text-3);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--border);font-weight:600">Pts</td>${ptsCells(holes)}${ptsTot(holes)}</tr>
-      </tbody>
-    </table>`;
+  const uid = 'sc' + Math.random().toString(36).slice(2,7);
 
-  return section(front) + section(back);
+  const makePanel = (startIdx, endIdx, panelId) => {
+    const holes = Array.from({length: endIdx - startIdx + 1}, (_, i) => startIdx + i);
+    const totalPts = holes.reduce((s, i) => s + (pts[i] || 0), 0);
+    const totalGross = holes.reduce((s, i) => s + (scores[i] || 0), 0);
+    const rows = holes.map(i => {
+      const h = i + 1;
+      const par = parVals[i] || 4;
+      const si  = siVals[i] || h;
+      const sc  = scores[i];
+      const p   = pts[i];
+      return `<div style="display:flex;align-items:center;padding:9px 12px;border-bottom:0.5px solid var(--border);background:${p !== null ? ptsBg(p) : 'transparent'}">
+        <div style="display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0">
+          <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1">${h}</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:1px">SI${si}</div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:6px;padding:0 8px">
+          <span style="font-size:12px;color:var(--text-3)">Par ${par}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;flex-shrink:0">
+          <div style="text-align:center;min-width:32px">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Score</div>
+            <div style="font-size:18px;font-weight:700;color:${sc !== null ? scoreDiff(sc, par) : 'var(--text-3)'};line-height:1">${sc !== null ? sc : '—'}</div>
+          </div>
+          <div style="text-align:center;min-width:32px">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Pts</div>
+            <div style="font-size:18px;font-weight:700;color:${p !== null ? ptsColor(p) : 'var(--text-3)'};line-height:1">${p !== null ? p : '—'}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div id="${panelId}" style="display:none">
+      ${rows}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-2);border-top:1px solid var(--border-strong)">
+        <span style="font-size:12px;color:var(--text-3);font-weight:600">Total</span>
+        <div style="display:flex;gap:20px">
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">Gross</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">${totalGross}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">Pts</div>
+            <div style="font-size:15px;font-weight:700;color:var(--green-mid)">${totalPts}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  const frontId = uid + '-front';
+  const backId  = uid + '-back';
+  const tabBtnStyle = (active) => `padding:8px 0;flex:1;border:none;border-bottom:2px solid ${active ? '#FAC775' : 'transparent'};background:transparent;font-size:13px;font-weight:${active ? '700' : '500'};color:${active ? '#FAC775' : 'var(--text-3)'};cursor:pointer;font-family:'DM Sans',sans-serif;touch-action:manipulation;transition:color .15s`;
+
+  return `<div style="border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border)">
+    <div style="display:flex;background:var(--bg-2);border-bottom:1px solid var(--border)">
+      <button id="${uid}-tab-front" style="${tabBtnStyle(true)}" onclick="
+        document.getElementById('${frontId}').style.display='';
+        document.getElementById('${backId}').style.display='none';
+        document.getElementById('${uid}-tab-front').style.borderBottomColor='#FAC775';
+        document.getElementById('${uid}-tab-front').style.color='#FAC775';
+        document.getElementById('${uid}-tab-front').style.fontWeight='700';
+        document.getElementById('${uid}-tab-back').style.borderBottomColor='transparent';
+        document.getElementById('${uid}-tab-back').style.color='var(--text-3)';
+        document.getElementById('${uid}-tab-back').style.fontWeight='500';
+      ">Front 9</button>
+      <button id="${uid}-tab-back" style="${tabBtnStyle(false)}" onclick="
+        document.getElementById('${backId}').style.display='';
+        document.getElementById('${frontId}').style.display='none';
+        document.getElementById('${uid}-tab-back').style.borderBottomColor='#FAC775';
+        document.getElementById('${uid}-tab-back').style.color='#FAC775';
+        document.getElementById('${uid}-tab-back').style.fontWeight='700';
+        document.getElementById('${uid}-tab-front').style.borderBottomColor='transparent';
+        document.getElementById('${uid}-tab-front').style.color='var(--text-3)';
+        document.getElementById('${uid}-tab-front').style.fontWeight='500';
+      ">Back 9</button>
+    </div>
+    ${makePanel(0, 8, frontId)}
+    ${makePanel(9, 17, backId)}
+  </div>
+  <script>document.getElementById('${frontId}').style.display='';<\/script>`;
 }
 
 function viewPlayerRounds(pid, name) {
