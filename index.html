@@ -919,7 +919,7 @@ function fmtDate(d) {
 }
 
 function calcStableford(score, par, allowance) { return Math.max(0, par - (score - allowance) + 2); }
-function calcCourseHcp(idx) { return Math.round(idx); }
+function calcCourseHcp(idx) { return Math.min(36, Math.round(idx)); }
 function calcNewHcp(hcpIdx, totalPts, position) {
   if (position === 1) return Math.max(0, parseFloat((hcpIdx - 1.0).toFixed(1)));
   if (position === 2) return Math.max(0, parseFloat((hcpIdx - 0.6).toFixed(1)));
