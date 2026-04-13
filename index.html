@@ -2081,18 +2081,18 @@ async function saveEditedEvent(eid) {
 async function togglePublishEvent(eid, currentlyPublished) {
   const ev = db.events.find(e=>e.id===eid);
   if (!ev) return;
-  if (!currentlyPublished) {
-    const total = db.rounds.filter(r=>r.event_id===eid).length;
-    if (total === 0) { toast('No rounds submitted for this event yet', 'error'); return; }
-    const unverified = db.rounds.filter(r=>r.event_id===eid && !r.verified);
-    if (unverified.length > 0) {
-      if (!confirm(`${unverified.length} round(s) not yet verified. Verify and publish all now?`)) return;
-      await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
-      const sorted = [...unverified].sort((a,b) => b.stableford_points - a.stableford_points);
-      await Promise.all(sorted.map(r => patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) })));
-    }
-  }
   try {
+    if (!currentlyPublished) {
+      const total = db.rounds.filter(r=>r.event_id===eid).length;
+      if (total === 0) { toast('No rounds submitted for this event yet', 'error'); return; }
+      const unverified = db.rounds.filter(r=>r.event_id===eid && !r.verified);
+      if (unverified.length > 0) {
+        if (!confirm(`${unverified.length} round(s) not yet verified. Verify and publish all now?`)) return;
+        await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
+        const sorted = [...unverified].sort((a,b) => b.stableford_points - a.stableford_points);
+        await Promise.all(sorted.map(r => patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) })));
+      }
+    }
     await patch(`events?id=eq.${eid}`, { published: !currentlyPublished });
     toast(currentlyPublished ? 'Results unpublished' : 'Results published to leaderboard!', 'success');
     await loadAll(); renderAll();
@@ -2577,6 +2577,8 @@ function closeAdminModal() { document.getElementById('admin-modal').classList.re
 function maybeCloseAdminModal(e) { if(e.target===document.getElementById('admin-modal')) closeAdminModal(); }
 function closePostNoticeModal() { document.getElementById('post-notice-modal').classList.remove('open'); }
 function maybeClosePostNoticeModal(e) { if(e.target===document.getElementById('post-notice-modal')) closePostNoticeModal(); }
+function closePostModal() { document.getElementById('post-update-modal').classList.remove('open'); }
+function maybeClosePostModal(e) { if(e.target===document.getElementById('post-update-modal')) closePostModal(); }
 function showPostNoticeModal() {
   if (!isAdmin) return;
   document.getElementById('pn-title').value = '';
