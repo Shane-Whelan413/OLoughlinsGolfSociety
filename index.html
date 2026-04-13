@@ -2082,11 +2082,14 @@ async function togglePublishEvent(eid, currentlyPublished) {
   const ev = db.events.find(e=>e.id===eid);
   if (!ev) return;
   if (!currentlyPublished) {
-    const verified = db.rounds.filter(r=>r.event_id===eid && r.verified).length;
     const total = db.rounds.filter(r=>r.event_id===eid).length;
     if (total === 0) { toast('No rounds submitted for this event yet', 'error'); return; }
-    if (verified < total) {
-      if (!confirm(`${verified} of ${total} rounds are verified. Publish anyway?`)) return;
+    const unverified = db.rounds.filter(r=>r.event_id===eid && !r.verified);
+    if (unverified.length > 0) {
+      if (!confirm(`${unverified.length} round(s) not yet verified. Verify and publish all now?`)) return;
+      await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
+      const sorted = [...unverified].sort((a,b) => b.stableford_points - a.stableford_points);
+      await Promise.all(sorted.map(r => patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) })));
     }
   }
   try {
@@ -2837,10 +2840,12 @@ async function saveEditedRound(rid) {
 async function verifyAllRounds(eid) {
   const unverified = db.rounds.filter(r=>r.event_id===eid && !r.verified);
   if (!unverified.length) { toast('No unverified rounds for this event', 'error'); return; }
-  if (!confirm(`Verify all ${unverified.length} rounds for this event?`)) return;
+  if (!confirm(`Verify all ${unverified.length} rounds and update handicaps?`)) return;
   try {
     await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
-    toast(`${unverified.length} rounds verified!`, 'success');
+    const sorted = [...unverified].sort((a,b) => b.stableford_points - a.stableford_points);
+    await Promise.all(sorted.map(r => patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) })));
+    toast(`${unverified.length} rounds verified & handicaps updated!`, 'success');
     await loadAll(); renderAll();
   } catch(e) { toast('Error: '+e.message, 'error'); }
 }
