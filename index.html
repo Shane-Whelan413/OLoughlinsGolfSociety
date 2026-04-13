@@ -3075,7 +3075,6 @@ function renderProfile() {
           ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : 0;
         const hcpColor = hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
         const hcpSign  = hcpChange < 0 ? '' : hcpChange > 0 ? '+' : '±';
-        const canEdit = isAdmin || (currentUser && currentUser.playerId === pid);
         return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:12px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
             <div>
@@ -3109,7 +3108,6 @@ function renderProfile() {
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
             <span>${r.verified ? '<span class="badge green" style="font-size:11px">✓ Verified</span>' : '<span class="badge gray" style="font-size:11px">Pending</span>'}</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              ${canEdit ? `<button class="btn sm" onclick="editRound('${r.id}')">Edit</button>` : ''}
               ${isAdmin && !r.verified ? `<button class="btn sm" style="background:#E1F5EE;color:#085041;border-color:#9FE1CB" onclick="verifyRound('${r.id}')">Verify</button>` : ''}
               ${isAdmin ? `<button class="btn sm danger" onclick="deleteRound('${r.id}')">Delete</button>` : ''}
             </div>
