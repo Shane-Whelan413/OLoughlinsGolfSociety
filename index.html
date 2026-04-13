@@ -2724,45 +2724,102 @@ async function adminResetPin(pid, name) {
 
 
 function showPlayerProfile(pid) {
-  viewProfile(pid);
+  const p = db.players.find(x=>x.id===pid);
+  if (p) viewPlayerRounds(pid, p.name);
+}
+
+function scorecardRow(holes, vals, label, bold) {
+  const cellStyle = `style="font-size:11px;text-align:center;padding:4px 2px;${bold?'font-weight:700;':''}border-right:1px solid var(--border)"`;
+  const cells = holes.map(i => `<td ${cellStyle}>${vals[i] !== undefined && vals[i] !== null ? vals[i] : '—'}</td>`).join('');
+  const total = holes.reduce((s,i) => s + (parseFloat(vals[i])||0), 0);
+  return `<tr><td style="font-size:10px;color:var(--text-3);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--border);font-weight:600">${label}</td>${cells}<td style="font-size:11px;font-weight:700;text-align:center;padding:4px 4px">${total||'—'}</td></tr>`;
+}
+
+function buildScorecard(r, ev, pl) {
+  if (!r.hole_scores || !r.hole_scores.length) return '<div style="color:var(--text-3);font-size:13px;text-align:center;padding:8px">No hole scores recorded</div>';
+  const n = 18;
+  const parVals = getParValues(n, ev, pl);
+  const siVals  = getSIValues(n, ev, pl);
+  const courseHcp = calcCourseHcp(parseFloat(r.handicap_before)||0);
+  const scores = r.hole_scores;
+  // Stableford per hole
+  const pts = scores.map((s,i) => s !== null && s !== undefined ? calcStableford(s, parVals[i], getStrokeAllowance(courseHcp, siVals[i], n)) : null);
+  const front = [0,1,2,3,4,5,6,7,8];
+  const back  = [9,10,11,12,13,14,15,16,17];
+  const holeNums = n => n.map(i=>`<th style="font-size:10px;text-align:center;padding:4px 2px;color:var(--text-3);border-right:1px solid var(--border)">${i+1}</th>`).join('');
+  const totH = `<th style="font-size:10px;text-align:center;padding:4px 4px;color:var(--text-3)">Tot</th>`;
+  const labelH = `<th style="font-size:10px;padding:4px 6px;color:var(--text-3);border-right:1px solid var(--border)"></th>`;
+  const tableStyle = `style="width:100%;border-collapse:collapse;background:var(--surface);border-radius:var(--radius);overflow:hidden;margin-bottom:8px"`;
+
+  // colour stableford cells
+  const ptsCells = (holes) => holes.map(i => {
+    const p = pts[i];
+    const bg = p === null ? '' : p >= 4 ? 'background:#1D9E75;color:#fff' : p === 3 ? 'background:#5BC49A;color:#fff' : p === 2 ? '' : p <= 1 ? 'background:#F7C1C1;color:#A32D2D' : '';
+    return `<td style="font-size:11px;text-align:center;padding:4px 2px;${bg};border-right:1px solid var(--border);font-weight:600">${p !== null ? p : '—'}</td>`;
+  }).join('');
+  const ptsTot = (holes) => { const t = holes.reduce((s,i)=>s+(pts[i]||0),0); return `<td style="font-size:11px;font-weight:700;text-align:center;padding:4px 4px">${t}</td>`; };
+
+  const section = (holes) => `
+    <table ${tableStyle}>
+      <thead><tr>${labelH}${holeNums(holes)}${totH}</tr></thead>
+      <tbody>
+        ${scorecardRow(holes, parVals, 'Par', false)}
+        ${scorecardRow(holes, siVals,  'SI',  false)}
+        ${scorecardRow(holes, scores,  'Score', true)}
+        <tr><td style="font-size:10px;color:var(--text-3);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--border);font-weight:600">Pts</td>${ptsCells(holes)}${ptsTot(holes)}</tr>
+      </tbody>
+    </table>`;
+
+  return section(front) + section(back);
 }
 
 function viewPlayerRounds(pid, name) {
+  const pl = db.players.find(p=>p.id===pid);
   const rounds = db.rounds.filter(r=>r.player_id===pid).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   const canEdit = isAdmin || (currentUser && currentUser.playerId===pid);
-  document.getElementById('modal-title').textContent = `Rounds — ${name}`;
+  document.getElementById('modal-title').textContent = `${name}`;
   if (!rounds.length) {
     document.getElementById('modal-body').innerHTML = '<div class="empty">No rounds yet</div>';
   } else {
     document.getElementById('modal-body').innerHTML = rounds.map(r => {
       const ev = db.events.find(e=>e.id===r.event_id);
-      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:10px">
+      const scorecard = ev ? buildScorecard(r, ev, pl) : '';
+      const hcpChange = r.handicap_after !== undefined && r.handicap_before !== undefined
+        ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : 0;
+      const hcpColor = hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
+      const hcpSign  = hcpChange < 0 ? '' : hcpChange > 0 ? '+' : '±';
+      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:12px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
           <div>
-            <div style="font-weight:600;font-size:14px;color:var(--text)">${ev ? ev.course_name : "—"}</div>
+            <div style="font-weight:600;font-size:15px;color:var(--text)">${ev ? ev.course_name : "—"}</div>
             <div style="font-size:12px;color:var(--text-3);margin-top:2px">${ev ? fmtDate(ev.event_date) : ""}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:26px;font-weight:700;color:var(--green-mid);line-height:1">${r.stableford_points}</div>
+            <div style="font-size:30px;font-weight:700;color:var(--green-mid);line-height:1">${r.stableford_points}</div>
             <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">stableford</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Course hcp</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text)">${r.course_handicap}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Gross</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${r.gross_score||'—'}</div>
           </div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Hcp before</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text)">${parseFloat(r.handicap_before).toFixed(1)}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">C. Hcp</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${r.course_handicap}</div>
           </div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Hcp after</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text)">${parseFloat(r.handicap_after).toFixed(1)}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">Hcp</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${parseFloat(r.handicap_before).toFixed(1)}</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">New Hcp</div>
+            <div style="font-size:14px;font-weight:600;color:${hcpColor}">${parseFloat(r.handicap_after).toFixed(1)} <span style="font-size:10px">${hcpSign}${Math.abs(hcpChange).toFixed(1)}</span></div>
           </div>
         </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px">${scorecard}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <span>${r.verified ? '<span class="badge green" style="font-size:11px">✓ Verified</span>' : '<span class="badge gray" style="font-size:11px">Unverified</span>'}</span>
+          <span>${r.verified ? '<span class="badge green" style="font-size:11px">✓ Verified</span>' : '<span class="badge gray" style="font-size:11px">Pending</span>'}</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             ${canEdit ? `<button class="btn sm" onclick="editRound('${r.id}')">Edit</button>` : ''}
             ${isAdmin && !r.verified ? `<button class="btn sm" style="background:#E1F5EE;color:#085041;border-color:#9FE1CB" onclick="verifyRound('${r.id}')">Verify</button>` : ''}
