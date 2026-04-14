@@ -2413,12 +2413,51 @@ function generateResultsCard(eid) {
   if (notice && notice.birdies && notice.birdies.length) extItems.push({ label:'BIRDIES', value: notice.birdies.join(', ') });
   if (notice && notice.body) extItems.push({ label:'NOTE', value: notice.body });
 
+  // Helper: wrap text into lines that fit within maxWidth
+  function wrapText(ctx, text, maxWidth, font) {
+    ctx.font = font;
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
   const S = 3;
   const W = 580, PAD = 32;
-  const HEADER_H = 170, ROW_H = 110, EXT_ROW_H = 88;
-  const H = HEADER_H + 50 + podium.length * ROW_H
-          + (extItems.length ? 36 + extItems.length * EXT_ROW_H + 16 : 0)
-          + 96;
+  const HEADER_H = 170, ROW_H = 110;
+  const NOTE_FONT = '500 16px DM Sans,sans-serif';
+  const NOTE_LINE_H = 22;
+  const NOTE_MAX_W = W - PAD*2 - 40;
+
+  // Pre-calculate heights for ext items (note wraps, others are single line)
+  function extItemHeight(item) {
+    if (item.label === 'NOTE') {
+      // need a temporary canvas to measure — approximate 16px chars at ~9px wide
+      const approxCharsPerLine = Math.floor(NOTE_MAX_W / 9);
+      const words = item.value.split(' ');
+      let lines = 1, cur = 0;
+      for (const w of words) {
+        if (cur + w.length + 1 > approxCharsPerLine && cur > 0) { lines++; cur = w.length; }
+        else cur += w.length + 1;
+      }
+      return 36 + lines * NOTE_LINE_H + 16;
+    }
+    return 88;
+  }
+
+  const extHeights = extItems.map(extItemHeight);
+  const totalExtH = extItems.length ? 36 + extHeights.reduce((a,b)=>a+b,0) + 16 : 0;
+  const H = HEADER_H + 50 + podium.length * ROW_H + totalExtH + 96;
 
   const BLACK = '#0d0d0d', GREEN = '#1D9E75', AMBER = '#FAC775', WHITE = '#ffffff';
   const LIGHT = 'rgba(255,255,255,0.08)', LIGHTER = 'rgba(255,255,255,0.13)';
@@ -2538,13 +2577,13 @@ function generateResultsCard(eid) {
   // Extras
   if (extItems.length) {
     const extY = cursor + podium.length * ROW_H + 14;
-    const extH = extItems.length * EXT_ROW_H + 20;
+    const extH = extHeights.reduce((a,b)=>a+b,0) + 20;
     ctx.fillStyle = LIGHTER;
     ctx.beginPath();
     ctx.roundRect(PAD, extY, W-PAD*2, extH, 12);
     ctx.fill();
+    let iy = extY + 16;
     extItems.forEach((item, i) => {
-      const iy = extY + 16 + i * EXT_ROW_H;
       if (i > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.fillRect(PAD+20, iy-6, W-PAD*2-40, 1);
@@ -2554,8 +2593,18 @@ function generateResultsCard(eid) {
       ctx.textAlign = 'left';
       ctx.fillText(item.label, PAD+20, iy+18);
       ctx.fillStyle = WHITE;
-      ctx.font = '500 21px DM Sans,sans-serif';
-      ctx.fillText(item.value, PAD+20, iy+46);
+      if (item.label === 'NOTE') {
+        const lines = wrapText(ctx, item.value, NOTE_MAX_W, NOTE_FONT);
+        ctx.font = NOTE_FONT;
+        lines.forEach((line, li) => {
+          ctx.fillText(line, PAD+20, iy + 40 + li * NOTE_LINE_H);
+        });
+        iy += extHeights[i];
+      } else {
+        ctx.font = '500 18px DM Sans,sans-serif';
+        ctx.fillText(item.value, PAD+20, iy+46);
+        iy += extHeights[i];
+      }
     });
   }
 
