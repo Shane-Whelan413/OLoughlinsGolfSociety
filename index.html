@@ -398,8 +398,6 @@
     border: 1px solid rgba(255,255,255,0.10);
     border-radius: var(--radius-xl);
     padding: 1.25rem 1.25rem 1.5rem; width: 100%; max-width: 360px;
-    max-height: calc(100dvh - 2rem);
-    display: flex; flex-direction: column;
     text-align: center;
     box-shadow: 0 8px 40px rgba(0,0,0,0.5);
   }
@@ -421,7 +419,7 @@
   .login-search-wrap input:focus { border-color: #FAC775; background: rgba(255,255,255,0.12); }
   .login-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.4); font-size: 16px; pointer-events: none; }
   /* Name list — grows to fill available space */
-  .login-name-grid { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; overflow-y: auto; flex: 1 1 0; min-height: 80px; }
+  .login-name-grid { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100svh - 260px); min-height: 120px; }
   .login-name-btn {
     padding: 13px 14px; border-radius: var(--radius);
     border: 1px solid rgba(255,255,255,0.10);
@@ -480,7 +478,7 @@
     </div>
     <p id="login-subtitle" style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:1rem">Select your name to continue</p>
     <!-- Search + name list (shown when selecting name) -->
-    <div id="login-name-section" style="display:flex;flex-direction:column;flex:1 1 0;min-height:0">
+    <div id="login-name-section">
       <div class="login-search-wrap">
         <span class="login-search-icon">⌕</span>
         <input type="text" id="login-name-search" placeholder="Search your name…" oninput="filterLoginNames(this.value)" autocomplete="off" />
