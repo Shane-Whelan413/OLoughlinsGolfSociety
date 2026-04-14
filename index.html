@@ -2662,8 +2662,8 @@ function showPostUpdate(eid) {
       <input id="pu-birdies" placeholder="e.g. Dave Raitt, Ian Tucker" value="${existing&&existing.birdies?existing.birdies.join(', '):''}" />
     </div>
     <div class="form-group" style="margin-bottom:1rem">
-      <label>Custom announcement <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>
-      <input id="pu-custom" placeholder="e.g. Great turnout today, next week at Bray!" value="${existing&&existing.body?existing.body:''}" />
+      <label>Message <span style="font-weight:400;color:var(--text-3)">(optional — skins results, next outing, etc.)</span></label>
+      <textarea id="pu-custom" placeholder="e.g. Skins won by Dave Raitt on hole 14. Next outing at Bray Head, 12th July." rows="4" style="resize:vertical;min-height:90px">${existing&&existing.body?existing.body:''}</textarea>
     </div>
     <button class="btn primary" onclick="saveNotice('${eid}','${existing?existing.id:''}')" style="width:100%">${existing?'Update post':'Post to home page'}</button>
   `;
