@@ -2147,7 +2147,7 @@ async function deleteRound(rid) {
 function viewEventResults(eid) {
   const ev = db.events.find(e=>e.id===eid);
   if (!ev) return;
-  const ranked = assignLeaguePts(db.rounds.filter(r=>r.event_id===eid).map(r=>({...r})));
+  const ranked = assignLeaguePts(db.rounds.filter(r=>r.event_id===eid && r.verified).map(r=>({...r})));
   document.getElementById('modal-title').textContent = `${ev.course_name} · ${fmtDate(ev.event_date)}`;
   document.getElementById('modal-body').innerHTML = !ranked.length
     ? '<div class="empty">No rounds recorded yet</div>'
@@ -2199,27 +2199,26 @@ function renderSchedule() {
       </div>`;
   }
 
-  const cards = seasonDates.map((entry,i)=>{
+  const cards = seasonDates.map((entry,i) => {
     const { date: d, course: outingCourse } = entry;
-    const ev     = byDate[d];
-    const isPast = d < today;
-    const isTdy  = d === today;
-    const isUpcoming = !isPast && !isTdy;
+    const ev      = byDate[d];
+    const isPast  = d < today;
+    const isTdy   = d === today;
     let statusBadge, podiumHtml = '';
 
     if (ev) {
-      const evRounds = db.rounds.filter(r=>r.event_id===ev.id && r.verified).sort((a,b)=>b.stableford_points-a.stableford_points);
+      const evRounds = assignLeaguePts(db.rounds.filter(r=>r.event_id===ev.id && r.verified).map(r=>({...r})));
       if (evRounds.length) {
         const medals = ['🥇','🥈','🥉'];
-        podiumHtml = `<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">` +
-          evRounds.slice(0,3).map((r,ri)=>{
+        podiumHtml = '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">' +
+          evRounds.slice(0,3).map((r,ri) => {
             const p = db.players.find(x=>x.id===r.player_id);
             return p ? `<div style="display:flex;align-items:center;gap:6px;font-size:13px">
               <span>${medals[ri]}</span>
               <span style="font-weight:600;color:var(--text)">${p.name.split(' ')[0]}</span>
               <span style="color:var(--text-3);font-size:12px">${r.stableford_points}pts</span>
             </div>` : '';
-          }).filter(Boolean).join('') + `</div>`;
+          }).filter(Boolean).join('') + '</div>';
       }
       statusBadge = isTdy ? '<span class="badge gold">Today</span>'
         : isPast ? '<span class="badge purple">Played</span>'
@@ -2231,8 +2230,8 @@ function renderSchedule() {
     }
 
     const courseName = ev ? ev.course_name : (outingCourse || 'TBC');
-    const borderColor = isTdy ? '#FAC775' : isPast ? 'var(--border)' : 'var(--border)';
-    const numColor = isTdy ? '#FAC775' : isUpcoming ? 'var(--text-3)' : 'var(--text-3)';
+    const borderColor = isTdy ? '#FAC775' : 'var(--border)';
+    const numColor = isTdy ? '#FAC775' : 'var(--text-3)';
 
     return `<div style="background:var(--card-bg);border-radius:12px;padding:14px 16px;margin-bottom:10px;border:1px solid ${borderColor};${isTdy?'box-shadow:0 0 0 2px rgba(250,199,117,0.2)':''}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
