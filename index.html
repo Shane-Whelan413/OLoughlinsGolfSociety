@@ -300,10 +300,10 @@
     display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
   }
   .lb-card.lb-top { padding: 13px 14px; margin-bottom: 10px; }
-  .lb-card.lb-top.lb-1st { background: linear-gradient(135deg, #fffbef 0%, #fef3cc 100%); border-color: #FAC775; box-shadow: 0 2px 12px rgba(250,199,117,0.30); }
-  .lb-card.lb-top.lb-2nd { background: linear-gradient(135deg, #f8f8f7 0%, #ededeb 100%); border-color: #C8C6BC; box-shadow: 0 2px 10px rgba(180,178,170,0.22); }
-  .lb-card.lb-top.lb-3rd { background: linear-gradient(135deg, #fff5f0 0%, #fde8db 100%); border-color: #E8A080; box-shadow: 0 2px 10px rgba(200,120,80,0.18); }
-  .lb-card.lb-rest { background: #f5f4f1; border-color: #e5e3dc; }
+  .lb-card.lb-top.lb-1st { background: linear-gradient(135deg, #fffbef 0%, #fef3cc 100%); border-color: #FAC775; box-shadow: 0 3px 14px rgba(250,199,117,0.35); }
+  .lb-card.lb-top.lb-2nd { background: linear-gradient(135deg, #f8f8f7 0%, #ededeb 100%); border-color: #C8C6BC; box-shadow: 0 2px 10px rgba(180,178,170,0.30); }
+  .lb-card.lb-top.lb-3rd { background: linear-gradient(135deg, #fff5f0 0%, #fde8db 100%); border-color: #E8A080; box-shadow: 0 2px 10px rgba(200,120,80,0.25); }
+  .lb-card.lb-rest { background: var(--surface); border-color: rgba(0,0,0,0.12); }
   .lb-card .rank { width: 28px; height: 28px; flex-shrink: 0; font-size: 12px; }
   .lb-card.lb-top .rank { width: 36px; height: 36px; font-size: 14px; }
   .lb-card .avatar { width: 34px; height: 34px; font-size: 12px; flex-shrink: 0; }
@@ -311,12 +311,9 @@
   .lb-card-info { flex: 1; min-width: 0; }
   .lb-card-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lb-card.lb-top .lb-card-name { font-size: 16px; font-weight: 700; }
-  .lb-card.lb-rest .lb-card-name { color: #888780; }
   .lb-card-sub  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
-  .lb-card.lb-rest .lb-card-sub { color: #b0ada6; }
   .lb-card-pts  { font-size: 20px; font-weight: 600; color: var(--green-mid); flex-shrink: 0; }
   .lb-card.lb-top .lb-card-pts { font-size: 24px; font-weight: 700; }
-  .lb-card.lb-rest .lb-card-pts { font-size: 18px; color: #a09e96; }
 
   /* ── Larger hole inputs ── */
   .hole-scroll-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
