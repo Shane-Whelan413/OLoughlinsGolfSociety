@@ -3507,13 +3507,32 @@ function toast(msg, type='') {
 }
 
 function getStoredSession() {
-  try { return JSON.parse(localStorage.getItem('ol_session')||'null'); } catch(e){ return null; }
+  try {
+    // Try localStorage first, fall back to sessionStorage
+    const ls = localStorage.getItem('ol_session');
+    if (ls) {
+      const parsed = JSON.parse(ls);
+      // Refresh the timestamp so it doesn't expire
+      if (parsed) storeSession(parsed);
+      return parsed;
+    }
+    // Fallback: sessionStorage (covers browser tab restores)
+    const ss = sessionStorage.getItem('ol_session');
+    if (ss) {
+      const parsed = JSON.parse(ss);
+      if (parsed) storeSession(parsed); // promote back to localStorage
+      return parsed;
+    }
+    return null;
+  } catch(e){ return null; }
 }
 function storeSession(s) {
   try { localStorage.setItem('ol_session', JSON.stringify(s)); } catch(e){}
+  try { sessionStorage.setItem('ol_session', JSON.stringify(s)); } catch(e){}
 }
 function clearSession() {
   try { localStorage.removeItem('ol_session'); } catch(e){}
+  try { sessionStorage.removeItem('ol_session'); } catch(e){}
 }
 
 let currentUser = null;
