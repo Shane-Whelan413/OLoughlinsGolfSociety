@@ -539,6 +539,9 @@
   <span class="site-sub">2026 Season</span>
   <span class="conn-pill" id="conn-pill">Connecting…</span>
   <span id="topbar-user" style="font-size:12px;color:rgba(255,255,255,0.7);margin-left:4px"></span>
+  <button class="btn sm" id="btn-admin-tools" onclick="showAdminToolsMenu()" style="border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);font-size:11px;padding:3px 6px;display:none" aria-label="Admin tools">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
   <button class="btn sm" id="btn-change-pin" onclick="showChangePin()" style="border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);font-size:11px;padding:3px 8px;display:none">Change PIN</button>
   <button class="btn sm" onclick="logout()" style="border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);font-size:11px;padding:3px 8px">Log out</button>
 </div>
@@ -2108,17 +2111,17 @@ async function saveRound() {
     if (scores[i]!==null) totalPts += calcStableford(scores[i], parVals[i], getStrokeAllowance(courseHcp, siVals[i], n));
   }
   const gross = scores.reduce((a,b)=>a+(b||0),0);
-  const eventRounds = db.rounds.filter(r=>r.event_id===eid);
-  const allPts = [...eventRounds.map(r=>r.stableford_points), totalPts].sort((a,b)=>b-a);
-  const position = allPts.indexOf(totalPts) + 1;
-  const newHcp = calcNewHcp(hcpIdx, totalPts, position);
+  // NOTE: handicap_after is NOT calculated here. It depends on the player's
+  // final position once every round for this event is in, so it can only be
+  // determined correctly at verification time (see verifyRound/verifyAllRounds).
+  // Submitting a score never touches handicap_index — only an admin verifying does.
 
   const btn = document.getElementById('btn-confirm-save');
   const btnOld = document.getElementById('btn-save-round');
   if (btn) { btn.disabled=true; btn.textContent='Saving…'; }
   if (btnOld) { btnOld.disabled=true; }
   try {
-    await post('rounds',{ event_id:eid, player_id:pid, hole_scores:scores, par_values:parVals, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_before:hcpIdx, handicap_after:newHcp, league_points:0 });
+    await post('rounds',{ event_id:eid, player_id:pid, hole_scores:scores, par_values:parVals, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_before:hcpIdx, handicap_after:null, league_points:0 });
     closeRoundPreview();
     toast(`Saved! ${totalPts} stableford pts · Pending verification`, 'success');
     for (let i=1; i<=n; i++) { _holeScores[i] = null; }
@@ -2293,6 +2296,37 @@ async function saveEditedEvent(eid) {
   } catch(e) { toast('Error: '+e.message, 'error'); }
 }
 
+// ── Handicap verification helper ──────────────────────────────
+// Computes the correct handicap_after for each round being verified, based on
+// final standings across ALL rounds (verified + about-to-be-verified) for the
+// event — not the order rounds happened to be submitted in. This is the only
+// place handicaps actually move; submitting a score never changes handicap_index.
+async function applyVerifiedHandicaps(eid, roundsToVerify) {
+  const allEventRounds = db.rounds.filter(r => r.event_id === eid);
+  // Build the final field: already-verified rounds + the ones we're about to verify
+  // (roundsToVerify may overlap allEventRounds — dedupe by id)
+  const byId = {};
+  allEventRounds.forEach(r => byId[r.id] = r);
+  roundsToVerify.forEach(r => byId[r.id] = r);
+  const field = Object.values(byId);
+  const sorted = [...field].sort((a,b) => b.stableford_points - a.stableford_points);
+
+  const roundPatches = [];
+  const playerPatches = [];
+  const results = {}; // roundId -> newHcp, for callers that need it before loadAll() refreshes db
+  for (const r of roundsToVerify) {
+    const position = sorted.findIndex(x => x.id === r.id) + 1;
+    const hcpBefore = parseFloat(r.handicap_before);
+    const newHcp = calcNewHcp(hcpBefore, r.stableford_points, position);
+    results[r.id] = newHcp;
+    roundPatches.push(patch(`rounds?id=eq.${r.id}`, { verified: true, handicap_after: newHcp }));
+    playerPatches.push(patch(`players?id=eq.${r.player_id}`, { handicap_index: newHcp }));
+  }
+  await Promise.all(roundPatches);
+  await Promise.all(playerPatches);
+  return results;
+}
+
 async function togglePublishEvent(eid, currentlyPublished) {
   const ev = db.events.find(e=>e.id===eid);
   if (!ev) return;
@@ -2303,9 +2337,7 @@ async function togglePublishEvent(eid, currentlyPublished) {
       const unverified = db.rounds.filter(r=>r.event_id===eid && !r.verified);
       if (unverified.length > 0) {
         if (!confirm(`${unverified.length} round(s) not yet verified. Verify and publish all now?`)) return;
-        await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
-        const sorted = [...unverified].sort((a,b) => b.stableford_points - a.stableford_points);
-        await Promise.all(sorted.map(r => patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) })));
+        await applyVerifiedHandicaps(eid, unverified);
       }
     }
     await patch(`events?id=eq.${eid}`, { published: !currentlyPublished });
@@ -3088,13 +3120,14 @@ function showPlayerProfile(pid) {
       <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Recent rounds</div>
       ${recentRounds.map(r=>{
         const ev = db.events.find(e=>e.id===r.event_id);
-        const hcpChange = r.handicap_after!==undefined && r.handicap_before!==undefined ? parseFloat(r.handicap_after)-parseFloat(r.handicap_before) : 0;
-        const hcpColor = hcpChange<0?'#1D9E75':hcpChange>0?'#E24B4A':'#888';
-        const hcpSign  = hcpChange<0?'−':hcpChange>0?'+':'±';
+        const hcpChange = r.verified && r.handicap_after!==undefined && r.handicap_after!==null && r.handicap_before!==undefined ? parseFloat(r.handicap_after)-parseFloat(r.handicap_before) : null;
+        const hcpColor = hcpChange===null?'#888':hcpChange<0?'#1D9E75':hcpChange>0?'#E24B4A':'#888';
+        const hcpSign  = hcpChange===null?'':hcpChange<0?'−':hcpChange>0?'+':'±';
+        const hcpLabel = hcpChange===null ? 'Pending verification' : hcpSign + Math.abs(hcpChange).toFixed(1);
         return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
           + '<div style="flex:1;min-width:0">'
           + '<div style="font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (ev?ev.course_name:'—') + '</div>'
-          + '<div style="font-size:11px;color:var(--text-3);margin-top:2px">' + (ev?fmtDate(ev.event_date):'') + ' · Hcp ' + parseFloat(r.handicap_before).toFixed(1) + '<span style="color:' + hcpColor + '"> ' + hcpSign + Math.abs(hcpChange).toFixed(1) + '</span></div>'
+          + '<div style="font-size:11px;color:var(--text-3);margin-top:2px">' + (ev?fmtDate(ev.event_date):'') + ' · Hcp ' + parseFloat(r.handicap_before).toFixed(1) + '<span style="color:' + hcpColor + '"> ' + hcpLabel + '</span></div>'
           + '</div>'
           + '<div style="text-align:right;flex-shrink:0">'
           + '<div style="font-size:24px;font-weight:700;color:var(--green-mid);line-height:1">' + r.stableford_points + '</div>'
@@ -3228,10 +3261,12 @@ function viewPlayerRounds(pid, name) {
     document.getElementById('modal-body').innerHTML = rounds.map(r => {
       const ev = db.events.find(e=>e.id===r.event_id);
       const scorecard = ev ? buildScorecard(r, ev, pl) : '';
-      const hcpChange = r.handicap_after !== undefined && r.handicap_before !== undefined
-        ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : 0;
-      const hcpColor = hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
-      const hcpSign  = hcpChange < 0 ? '' : hcpChange > 0 ? '+' : '±';
+      const hcpChange = r.verified && r.handicap_after !== undefined && r.handicap_after !== null && r.handicap_before !== undefined
+        ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : null;
+      const hcpColor = hcpChange === null ? '#888' : hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
+      const hcpSign  = hcpChange === null ? '' : hcpChange < 0 ? '' : hcpChange > 0 ? '+' : '±';
+      const newHcpLabel = hcpChange === null ? '—' : parseFloat(r.handicap_after).toFixed(1);
+      const hcpDeltaLabel = hcpChange === null ? 'Pending' : hcpSign + Math.abs(hcpChange).toFixed(1);
       return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:12px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
           <div>
@@ -3258,7 +3293,7 @@ function viewPlayerRounds(pid, name) {
           </div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center">
             <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">New Hcp</div>
-            <div style="font-size:14px;font-weight:600;color:${hcpColor}">${parseFloat(r.handicap_after).toFixed(1)} <span style="font-size:10px">${hcpSign}${Math.abs(hcpChange).toFixed(1)}</span></div>
+            <div style="font-size:14px;font-weight:600;color:${hcpColor}">${newHcpLabel} <span style="font-size:10px">${hcpDeltaLabel}</span></div>
           </div>
         </div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px">${scorecard}</div>
@@ -3281,10 +3316,12 @@ function viewProfileRoundScorecard(rid, pid) {
   const ev = r ? db.events.find(e=>e.id===r.event_id) : null;
   const pl = r ? db.players.find(x=>x.id===r.player_id) : null;
   if (!r || !ev || !pl) return;
-  const hcpChange = r.handicap_after !== undefined && r.handicap_before !== undefined
-    ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : 0;
-  const hcpColor = hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
-  const hcpSign  = hcpChange < 0 ? '−' : hcpChange > 0 ? '+' : '±';
+  const hcpChange = r.verified && r.handicap_after !== undefined && r.handicap_after !== null && r.handicap_before !== undefined
+    ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : null;
+  const hcpColor = hcpChange === null ? '#888' : hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
+  const hcpSign  = hcpChange === null ? '' : hcpChange < 0 ? '−' : hcpChange > 0 ? '+' : '±';
+  const newHcpLabel = hcpChange === null ? '—' : parseFloat(r.handicap_after).toFixed(1);
+  const hcpDeltaLabel = hcpChange === null ? 'Pending' : hcpSign + Math.abs(hcpChange).toFixed(1);
   const scorecard = buildScorecard(r, ev, pl);
   document.getElementById('modal-title').textContent = `${ev.course_name} · ${fmtDate(ev.event_date)}`;
   document.getElementById('modal-body').innerHTML = `
@@ -3303,7 +3340,7 @@ function viewProfileRoundScorecard(rid, pid) {
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center">
         <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">New Hcp</div>
-        <div style="font-size:14px;font-weight:600;color:${hcpColor}">${parseFloat(r.handicap_after).toFixed(1)} <span style="font-size:10px">${hcpSign}${Math.abs(hcpChange).toFixed(1)}</span></div>
+        <div style="font-size:14px;font-weight:600;color:${hcpColor}">${newHcpLabel} <span style="font-size:10px">${hcpDeltaLabel}</span></div>
       </div>
     </div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px">${scorecard}</div>
@@ -3370,12 +3407,11 @@ async function saveEditedRound(rid) {
     if (scores[i]!==null) totalPts += calcStableford(scores[i], parVals[i], getStrokeAllowance(courseHcp, siVals[i], n));
   }
   const gross = scores.reduce((a,b)=>a+(b||0),0);
-  const eventRounds = db.rounds.filter(x=>x.event_id===r.event_id && x.id!==rid);
-  const allPts = [...eventRounds.map(x=>x.stableford_points), totalPts].sort((a,b)=>b-a);
-  const position = allPts.indexOf(totalPts) + 1;
-  const newHcp = calcNewHcp(hcpIdx, totalPts, position);
+  // handicap_after is cleared here too — editing a round forces re-verification,
+  // and the new handicap is only ever set correctly at that point (see
+  // applyVerifiedHandicaps), against the final field for the event.
   try {
-    await patch(`rounds?id=eq.${rid}`, { hole_scores:scores, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_after:newHcp, verified:false });
+    await patch(`rounds?id=eq.${rid}`, { hole_scores:scores, stableford_points:totalPts, gross_score:gross, course_handicap:courseHcp, handicap_after:null, verified:false });
     toast(`Round updated! ${totalPts} pts · Needs re-verification`, 'success');
     closeModal();
     await loadAll(); renderAll();
@@ -3387,9 +3423,7 @@ async function verifyAllRounds(eid) {
   if (!unverified.length) { toast('No unverified rounds for this event', 'error'); return; }
   if (!confirm(`Verify all ${unverified.length} rounds and update handicaps?`)) return;
   try {
-    await Promise.all(unverified.map(r => patch(`rounds?id=eq.${r.id}`, { verified: true })));
-    const sorted = [...unverified].sort((a,b) => b.stableford_points - a.stableford_points);
-    await Promise.all(sorted.map(r => patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) })));
+    await applyVerifiedHandicaps(eid, unverified);
     toast(`${unverified.length} rounds verified & handicaps updated!`, 'success');
     await loadAll(); renderAll();
   } catch(e) { toast('Error: '+e.message, 'error'); }
@@ -3399,12 +3433,99 @@ async function verifyRound(rid) {
   const r = db.rounds.find(x=>x.id===rid);
   if (!r) return;
   try {
-    await patch(`rounds?id=eq.${rid}`, { verified: true });
-    await patch(`players?id=eq.${r.player_id}`, { handicap_index: parseFloat(r.handicap_after) });
-    toast(`Round verified! Hcp updated to ${parseFloat(r.handicap_after).toFixed(1)}`, 'success');
+    const results = await applyVerifiedHandicaps(r.event_id, [r]);
+    toast(`Round verified! Hcp updated to ${results[rid].toFixed(1)}`, 'success');
     await loadAll(); renderAll();
     closeModal();
   } catch(e) { toast('Error: '+e.message, 'error'); }
+}
+
+// ── Admin tools menu ───────────────────────────────────────────
+function showAdminToolsMenu() {
+  if (!isAdmin) return;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px">Admin tools</div>
+      <div style="font-size:12px;color:var(--text-3)">Society-wide maintenance actions.</div>
+    </div>
+    <button class="btn" style="width:100%;text-align:left;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px" onclick="closeModal();recalcAllHandicaps()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.83.99 6.53 2.6"/><path d="M21 3v6h-6"/></svg>
+      <div>
+        <div style="font-weight:600;font-size:14px">Recalc all handicaps</div>
+        <div style="font-size:11px;color:var(--text-3)">Rebuilds every verified round's handicap history in date order and resets current handicaps</div>
+      </div>
+    </button>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+// Rebuilds handicap_before/handicap_after on every verified round, walking
+// events in chronological order, so each round's position-based handicap
+// change is calculated against the correct, final field for that event —
+// then sets each player's current handicap to the result. Use this if
+// handicaps ever drift out of sync (e.g. from the old submit-time bug, or
+// rounds verified out of order).
+async function recalcAllHandicaps() {
+  if (!confirm("Recalculate all handicaps from verified round history?\n\nThis rewrites handicap_before/after on every verified round (in event-date order) and resets each player's current handicap to match. It does not touch unverified rounds.")) return;
+  try {
+    const eventsById = {};
+    db.events.forEach(e => eventsById[e.id] = e);
+    const verifiedRounds = db.rounds.filter(r => r.verified);
+    if (!verifiedRounds.length) { toast('No verified rounds to recalculate', 'error'); return; }
+
+    const roundsByEvent = {};
+    verifiedRounds.forEach(r => { (roundsByEvent[r.event_id] = roundsByEvent[r.event_id] || []).push(r); });
+    const orderedEventIds = Object.keys(roundsByEvent).sort((a,b) => {
+      const da = eventsById[a]?.event_date || '';
+      const dbb = eventsById[b]?.event_date || '';
+      return da.localeCompare(dbb);
+    });
+
+    // Seed each player's running handicap from their earliest verified round's
+    // stored handicap_before — that's the best record we have of where they
+    // started, since it predates any recalculation.
+    const runningHcp = {};
+    const earliestByPlayer = {};
+    verifiedRounds.forEach(r => {
+      const date = eventsById[r.event_id]?.event_date || '';
+      if (!earliestByPlayer[r.player_id] || date < earliestByPlayer[r.player_id].date) {
+        earliestByPlayer[r.player_id] = { date, hcp: parseFloat(r.handicap_before) };
+      }
+    });
+    Object.keys(earliestByPlayer).forEach(pid => { runningHcp[pid] = earliestByPlayer[pid].hcp; });
+
+    const roundPatches = [];
+    let changedRounds = 0;
+    for (const eid of orderedEventIds) {
+      const rounds = roundsByEvent[eid];
+      const sorted = [...rounds].sort((a,b) => b.stableford_points - a.stableford_points);
+      for (const r of rounds) {
+        const hcpBefore = runningHcp[r.player_id];
+        const position = sorted.findIndex(x => x.id === r.id) + 1;
+        const newHcp = calcNewHcp(hcpBefore, r.stableford_points, position);
+        if (parseFloat(r.handicap_before) !== hcpBefore || parseFloat(r.handicap_after) !== newHcp) {
+          roundPatches.push(patch(`rounds?id=eq.${r.id}`, { handicap_before: hcpBefore, handicap_after: newHcp }));
+          changedRounds++;
+        }
+        runningHcp[r.player_id] = newHcp;
+      }
+    }
+    await Promise.all(roundPatches);
+
+    const playerPatches = [];
+    let changedPlayers = 0;
+    Object.keys(runningHcp).forEach(pid => {
+      const player = db.players.find(p => p.id === pid);
+      if (player && parseFloat(player.handicap_index) !== runningHcp[pid]) {
+        playerPatches.push(patch(`players?id=eq.${pid}`, { handicap_index: runningHcp[pid] }));
+        changedPlayers++;
+      }
+    });
+    await Promise.all(playerPatches);
+
+    toast(`Recalc complete — ${changedRounds} round(s) corrected, ${changedPlayers} handicap(s) updated`, 'success');
+    await loadAll(); renderAll();
+  } catch(e) { toast('Recalc error: '+e.message, 'error'); }
 }
 
 function renderProfile() {
@@ -3545,7 +3666,7 @@ function renderProfile() {
       </div>
     </div>
 
-    ${myRounds.length > 1 ? `
+    ${myRounds.filter(r=>r.verified).length > 1 ? `
     <div class="card" style="margin-bottom:1rem">
       <div class="card-title">Handicap progression</div>
       <canvas id="hcp-chart" style="width:100%;height:180px"></canvas>
@@ -3556,10 +3677,13 @@ function renderProfile() {
       <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Round history</div>
       ${[...myRounds].sort((a,b)=>b.created_at?.localeCompare(a.created_at||'')||0).map(r=>{
         const ev = db.events.find(e=>e.id===r.event_id);
-        const hcpChange = r.handicap_after !== undefined && r.handicap_before !== undefined
-          ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : 0;
-        const hcpColor = hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
-        const hcpSign  = hcpChange < 0 ? '−' : hcpChange > 0 ? '+' : '±';
+        const hcpChange = r.verified && r.handicap_after !== undefined && r.handicap_after !== null && r.handicap_before !== undefined
+          ? parseFloat(r.handicap_after) - parseFloat(r.handicap_before) : null;
+        const hcpColor = hcpChange === null ? '#888' : hcpChange < 0 ? '#1D9E75' : hcpChange > 0 ? '#E24B4A' : '#888';
+        const hcpSign  = hcpChange === null ? '' : hcpChange < 0 ? '−' : hcpChange > 0 ? '+' : '±';
+        const hcpLine = hcpChange === null
+          ? parseFloat(r.handicap_before).toFixed(1) + ' → Pending'
+          : parseFloat(r.handicap_before).toFixed(1) + ' → ' + parseFloat(r.handicap_after).toFixed(1) + ' (' + hcpSign + Math.abs(hcpChange).toFixed(1) + ')';
         return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div style="min-width:0">
@@ -3568,7 +3692,7 @@ function renderProfile() {
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
                 <span style="font-size:20px;font-weight:700;color:var(--green-mid)">${r.stableford_points} <span style="font-size:11px;font-weight:400;color:var(--text-3)">pts</span></span>
                 <span style="font-size:12px;color:var(--text-3)">Gross ${r.gross_score||'—'}</span>
-                <span style="font-size:12px;color:${hcpColor};font-weight:600">${parseFloat(r.handicap_before).toFixed(1)} → ${parseFloat(r.handicap_after).toFixed(1)} <span style="font-size:11px">(${hcpSign}${Math.abs(hcpChange).toFixed(1)})</span></span>
+                <span style="font-size:12px;color:${hcpColor};font-weight:600">${hcpLine}</span>
               </div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
@@ -3581,12 +3705,14 @@ function renderProfile() {
     </div>` : '<div class="card"><div class="empty">No rounds played yet this season</div></div>'}
   `;
 
-  // Draw handicap chart after DOM update
-  if (myRounds.length > 1) {
+  // Draw handicap chart after DOM update — only verified rounds have a
+  // determined handicap_after, so unverified ones are excluded here.
+  const verifiedRoundsForChart = myRounds.filter(r => r.verified);
+  if (verifiedRoundsForChart.length > 1) {
     setTimeout(() => {
       const canvas = document.getElementById('hcp-chart');
       if (!canvas) return;
-      const sorted = [...myRounds].sort((a,b)=>a.created_at?.localeCompare(b.created_at||'')||0);
+      const sorted = [...verifiedRoundsForChart].sort((a,b)=>a.created_at?.localeCompare(b.created_at||'')||0);
       const labels = sorted.map(r=>{ const ev=db.events.find(e=>e.id===r.event_id); return ev?ev.course_name.split(' ')[0]:'R'; });
       const data   = sorted.map(r=>parseFloat(r.handicap_after));
       // Add starting point
@@ -3877,7 +4003,10 @@ function updateUIForRole() {
   if (addPlayerCard) addPlayerCard.style.display = isAdmin ? '' : 'none';
   const createEventCard = document.getElementById('create-event-card');
   if (createEventCard) createEventCard.style.display = isAdmin ? '' : 'none';
+  const pinBtn = document.getElementById('btn-change-pin');
   if (pinBtn) pinBtn.style.display = (role === 'member' || role === 'admin') && currentUser.playerId ? '' : 'none';
+  const adminToolsBtn = document.getElementById('btn-admin-tools');
+  if (adminToolsBtn) adminToolsBtn.style.display = isAdmin ? '' : 'none';
 
   // FAB — grey out for viewers only
   const fab = document.getElementById('fab-add-btn');
