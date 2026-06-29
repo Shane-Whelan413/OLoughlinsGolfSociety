@@ -706,7 +706,11 @@
       <div class="card-title">Record a round</div>
       <div class="form-row" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
         <div class="form-group"><label>Event</label><select id="r-event" onchange="onEventSelect();checkDuplicateRound()"><option value="">Select event…</option></select></div>
-        <div class="form-group"><label>Player</label><select id="r-player" onchange="updateRoundSummary();checkDuplicateRound()"><option value="">Select player…</option></select></div>
+        <div class="form-group">
+          <label>Player</label>
+          <select id="r-player" onchange="updateRoundSummary();checkDuplicateRound()"><option value="">Select player…</option></select>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">Defaults to you — pick a different name if you're submitting for someone else</div>
+        </div>
       </div>
     </div>
 
@@ -1159,20 +1163,34 @@ function renderEvents() {
 function renderAddRound() {
   const rp = document.getElementById('r-player');
   const re = document.getElementById('r-event');
-  const isMember = currentUser && currentUser.role === 'member';
-  if (isMember) {
-    let memberPlayers = db.players.filter(p=>p.id===currentUser.playerId);
-    if (!memberPlayers.length && currentUser.name) {
-      const needle = currentUser.name.trim().toLowerCase();
-      memberPlayers = db.players.filter(p=>p.name.trim().toLowerCase()===needle);
-    }
-    rp.innerHTML = memberPlayers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-    rp.disabled = true;
-  } else {
-    rp.disabled = false;
-    rp.innerHTML = '<option value="">Select player…</option>' + db.players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+
+  // Player select: always shows everyone and stays enabled — but defaults
+  // to "me" for anyone (member or admin) who is themselves a player, so
+  // most submissions need zero taps. Picking someone else is still just
+  // one tap away in the same dropdown.
+  rp.disabled = false;
+  rp.innerHTML = '<option value="">Select player…</option>' + db.players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  let defaultPlayerId = currentUser?.playerId || '';
+  if (!defaultPlayerId && currentUser?.name) {
+    const needle = currentUser.name.trim().toLowerCase();
+    const named = db.players.find(p=>p.name.trim().toLowerCase()===needle);
+    if (named) defaultPlayerId = named.id;
   }
+  if (defaultPlayerId && db.players.some(p=>p.id===defaultPlayerId)) {
+    rp.value = defaultPlayerId;
+  }
+
+  // Event select: defaults to the next upcoming event (today or later).
+  // Falls back to the most recent past event if nothing's upcoming, so
+  // there's still a sensible default rather than a blank picker.
   re.innerHTML = '<option value="">Select event…</option>' + [...db.events].reverse().map(e=>`<option value="${e.id}">${fmtDate(e.event_date)} — ${e.course_name}</option>`).join('');
+  const t = new Date();
+  const today = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  const upcoming = [...db.events].filter(e=>e.event_date >= today).sort((a,b)=>a.event_date.localeCompare(b.event_date));
+  const mostRecentPast = [...db.events].filter(e=>e.event_date < today).sort((a,b)=>b.event_date.localeCompare(a.event_date));
+  const defaultEvent = upcoming[0] || mostRecentPast[0];
+  if (defaultEvent) re.value = defaultEvent.id;
+
   buildHoleInputs(18);
   checkDuplicateRound();
 }
